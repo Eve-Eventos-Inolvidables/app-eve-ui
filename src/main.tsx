@@ -4,7 +4,8 @@ import './index.css'
 import App from './App.tsx'
 import { queryClient } from './api/queryClient.ts'
 import { QueryClientProvider } from '@tanstack/react-query'
-import { ComponentProvider } from './components/ui/component-provider.tsx'
+import { ComponentProvider } from './components/ui/chakra-base/component-provider.tsx'
+
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

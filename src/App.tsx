@@ -1,12 +1,9 @@
 import './App.css'
-import { Box, Button } from '@chakra-ui/react'
+import { router } from './routes'
+import { RouterProvider } from 'react-router-dom'
 
 function App() {
-
-  return <Box> 
-    <Button colorPalette='teal'>First EVE Button</Button>
-  </Box>
-    
+  return   <RouterProvider router={router} />
 }
 
 export default App
