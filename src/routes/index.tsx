@@ -1,30 +1,30 @@
 import { createBrowserRouter, Navigate } from "react-router-dom";
-import { PublicRoute } from "./guard/PublicRoute";
-import { ProtectedRoute } from "./guard/ProtectedRoute";
+import { AppLayout } from "../layouts/AppLayout";
+import Dashboard from "../pages/dashboard";
 import Login from "../pages/login";
-
-const protectedRoutes = [
-  {
-    element: null,  //Layout TODO
-    children: [
-      { path: "/dash", element: null }
-    ]
-  }
-]
+import Register from "../pages/register";
+import { ProtectedRoute } from "./guard/ProtectedRoute";
+import { PublicRoute } from "./guard/PublicRoute";
 
 export const router = createBrowserRouter([
   {
     element: <PublicRoute />,
     children: [
-      { path: "/login", element: <Login /> }
-    ]
+      { path: "/login", element: <Login /> },
+      { path: "/register", element: <Register /> },
+    ],
   },
   {
     element: <ProtectedRoute />,
-    children: protectedRoutes
+    children: [
+      {
+        element: <AppLayout />,
+        children: [
+          { index: true, element: <Navigate to="/dash" replace /> },
+          { path: "/dash", element: <Dashboard /> },
+        ],
+      },
+    ],
   },
   { path: "*", element: <Navigate to="/login" replace /> },
-]
-)
-
-
+]);

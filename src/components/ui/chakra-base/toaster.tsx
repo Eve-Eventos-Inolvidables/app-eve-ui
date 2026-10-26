@@ -6,13 +6,8 @@ import {
   Spinner,
   Stack,
   Toast,
-  createToaster,
 } from "@chakra-ui/react"
-
-export const toaster = createToaster({
-  placement: "bottom-end",
-  pauseOnPageIdle: true,
-})
+import { toaster } from "./toaster-instance"
 
 export const Toaster = () => {
   return (
@@ -21,7 +16,7 @@ export const Toaster = () => {
         {(toast) => (
           <Toast.Root width={{ md: "sm" }}>
             {toast.type === "loading" ? (
-              <Spinner size="sm" color="blue.solid" />
+              <Spinner size="sm" color="brand.solid" />
             ) : (
               <Toast.Indicator />
             )}
