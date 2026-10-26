@@ -23,7 +23,7 @@ export const router = createBrowserRouter([
     element: <ProtectedRoute />,
     children: protectedRoutes
   },
-  { path: "*", element: <Navigate to="/login" replace /> },
+  { path: "*", element: <Navigate to="/landing" replace /> },
 ]
 )
 
