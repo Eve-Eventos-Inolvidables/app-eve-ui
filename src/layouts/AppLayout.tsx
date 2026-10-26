@@ -11,7 +11,7 @@ import { Outlet, useNavigate } from "react-router-dom";
 import { ColorModeButton } from "../components/ui/ColorModeButton";
 import { toaster } from "../components/ui/chakra-base/toaster-instance";
 import { useAuthStore } from "../stores/auth.store";
-
+import {LogOut, Ticket} from 'lucide-react'
 export function AppLayout() {
   const user = useAuthStore((state) => state.user);
   const clearAuth = useAuthStore((state) => state.clearAuth);
@@ -21,7 +21,7 @@ export function AppLayout() {
     clearAuth();
     toaster.create({
       title: "Sesión cerrada",
-      description: "Vuelve pronto",
+      description: "Vuelva pronto",
       type: "success",
     });
     navigate("/login", { replace: true });
@@ -31,12 +31,12 @@ export function AppLayout() {
     <Box bg="bg" minH="100vh">
       <Box
         as="header"
-        bg="bg.panel"
-        borderBottomColor="border"
+        bg="bg.header"
+        borderBottomColor="border.header"
         borderBottomWidth="1px"
         position="sticky"
         top="0"
-        zIndex="1"
+        zIndex="10"
       >
         <Flex
           align="center"
@@ -51,16 +51,15 @@ export function AppLayout() {
               alignItems="center"
               bg="brand.solid"
               borderRadius="lg"
-              color="brand.contrast"
               display="flex"
               fontWeight="bold"
               h="9"
               justifyContent="center"
               w="9"
             >
-              E
+              <Ticket  color="white"/>
             </Box>
-            <Heading color="fg" size="md">
+            <Heading color="fg.header" size="md">
               EVE
             </Heading>
           </Flex>
@@ -74,10 +73,10 @@ export function AppLayout() {
               <Avatar.Fallback name={user?.name} />
             </Avatar.Root>
             <Box textAlign="left">
-              <Text color="fg" fontSize="sm" fontWeight="medium">
+              <Text color="fg.header" fontSize="sm" fontWeight="medium">
                 {user?.name ?? "Usuario"}
               </Text>
-              <Text color="fg.muted" fontSize="xs">
+              <Text color="fg.headerMuted" fontSize="xs">
                 {user?.email ?? "Sin correo"}
               </Text>
             </Box>
@@ -89,7 +88,7 @@ export function AppLayout() {
             size="sm"
             variant="outline"
           >
-            Salir
+           <LogOut /> Cerrar sesión
           </Button>
         </Flex>
       </Box>

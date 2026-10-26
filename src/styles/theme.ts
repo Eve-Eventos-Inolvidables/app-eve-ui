@@ -26,13 +26,15 @@ const config = defineConfig({
           900: { value: "#064E3B" },
           950: { value: "#022C22" },
         },
+        dark: { value: "#09090B" },
+        white: { value: "#FFFFFF" },
       },
     },
     semanticTokens: {
       colors: {
         bg: {
           DEFAULT: {
-            value: { _light: "{colors.gray.50}", _dark: "{colors.teal.900}" },
+            value: { _light: "{colors.gray.100}", _dark: "{colors.dark}" },
           },
           subtle: {
             value: { _light: "{colors.teal.50}", _dark: "{colors.gray.800}" },
@@ -44,40 +46,52 @@ const config = defineConfig({
             value: { _light: "{colors.gray.200}", _dark: "{colors.gray.700}" },
           },
           panel: {
-            value: { _light: "{colors.white}", _dark: "{colors.gray.800}" },
+            value: { _light: "{colors.white}", _dark: "#18181B" },
+          },
+          header: {
+            value: { _light: "{colors.dark}", _dark: "#121215" },
           },
         },
         fg: {
           DEFAULT: {
-            value: { _light: "{colors.gray.800}", _dark: "{colors.teal.200}" },
+            value: { _light: "{colors.dark}", _dark: "{colors.gray.100}" },
           },
           muted: {
-            value: { _light: "{colors.gray.600}", _dark: "{colors.teal.300}" },
+            value: { _light: "{colors.gray.600}", _dark: "{colors.gray.400}" },
           },
           subtle: {
-            value: { _light: "{colors.gray.500}", _dark: "{colors.teal.400}" },
+            value: { _light: "{colors.gray.500}", _dark: "{colors.gray.500}" },
           },
           inverted: {
             value: { _light: "{colors.white}", _dark: "{colors.gray.900}" },
           },
+          header: {
+            value: { _light: "{colors.white}", _dark: "{colors.gray.100}" },
+          },
+          headerMuted: {
+            value: { _light: "{colors.gray.400}", _dark: "{colors.gray.400}" },
+          },
         },
         border: {
           DEFAULT: {
-            value: { _light: "{colors.teal.200}", _dark: "{colors.teal.800}" },
+            value: { _light: "{colors.gray.200}", _dark: "{colors.gray.800}" },
           },
           muted: {
-            value: { _light: "{colors.teal.100}", _dark: "{colors.teal.900}" },
+            value: { _light: "{colors.gray.100}", _dark: "{colors.gray.900}" },
           },
           emphasized: {
-            value: { _light: "{colors.teal.300}", _dark: "{colors.teal.700}" },
+            value: { _light: "{colors.gray.300}", _dark: "{colors.gray.700}" },
+          },
+          header: {
+            value: { _light: "#27272A", _dark: "#27272A" },
           },
         },
         brand: {
           contrast: {
-            value: { _light: "{colors.gray.900}", _dark: "{colors.gray.900}" },
+            value: { _light: "{colors.white}", _dark: "{colors.gray.900}" },
           },
           fg: {
-            value: { _light: "{colors.brand.700}", _dark: "{colors.teal.200}" },
+            value: { _light: "{colors.brand.700}", _dark: "{colors.brand.300}" },
           },
           subtle: {
             value: { _light: "{colors.brand.50}", _dark: "{colors.gray.800}" },

@@ -7,6 +7,7 @@ import type {
   UserDto,
 } from "../types/auth.types";
 import { userFromToken } from "../utils/jwt";
+import type { ApiErrorResponse } from "../types/responses";
 
 interface AuthResult {
   user: UserDto;
@@ -17,7 +18,7 @@ async function loginAndStore(payload: LoginRequest): Promise<AuthResult> {
   const response = await login(payload);
 
   if (!response.success || !response.data?.token) {
-    throw new Error(response.message || "No se pudo iniciar sesión");
+    throw new Error((response as ApiErrorResponse).data?.message || "No se pudo iniciar sesión");
   }
 
   return {

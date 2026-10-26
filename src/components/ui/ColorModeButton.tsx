@@ -15,7 +15,7 @@ export function ColorModeButton() {
       variant="ghost"
     >
       {isDark ? <FiSun /> : <FiMoon />}
-      {isDark ? "Claro" : "Oscuro"}
+      {/* {isDark ? "Claro" : "Oscuro"} */}
     </Button>
   );
 }
