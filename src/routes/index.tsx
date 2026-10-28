@@ -5,7 +5,7 @@ import Login from "../pages/login";
 import Register from "../pages/register";
 import { ProtectedRoute } from "./guard/ProtectedRoute";
 import { PublicRoute } from "./guard/PublicRoute";
-
+import EventCreate from "../pages/Events/eventCreate";
 export const router = createBrowserRouter([
   {
     element: <PublicRoute />,
@@ -22,6 +22,7 @@ export const router = createBrowserRouter([
         children: [
           { index: true, element: <Navigate to="/dash" replace /> },
           { path: "/dash", element: <Dashboard /> },
+          {path:"/event/create",element:<EventCreate/>}
         ],
       },
     ],
