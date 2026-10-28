@@ -48,8 +48,7 @@ export default function Login() {
   return (
     <AuthLayout>
       <AuthCard
-        title="Bienvenido a EVE"
-        subtitle="Inicia sesión para gestionar tus eventos"
+        title="Iniciar Sesión"
         footer={
           <Text color="fg.muted" fontSize="sm">
             ¿No tienes cuenta?{" "}

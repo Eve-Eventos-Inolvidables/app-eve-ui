@@ -6,7 +6,8 @@ export default function Dashboard() {
 
   return (
     <Stack gap="8">
-      <Box>
+      {/* Encabezado de Bienvenida */}
+      <Box bg="bg.panel" borderColor="border" borderWidth="1px" borderRadius="xl" p="6">
         <Heading color="fg" size="2xl">
           Hola, {user?.name ?? "Usuario"}
         </Heading>
@@ -15,37 +16,45 @@ export default function Dashboard() {
         </Text>
       </Box>
 
-      <Card.Root bg="bg.panel" borderColor="border" borderWidth="1px">
-        <Card.Header>
+      {/* Tarjeta de Datos de la Cuenta */}
+      <Card.Root
+        bg="bg.panel"
+        borderColor="border"
+        borderWidth="1px"
+        borderRadius="xl"
+        shadow="sm"
+      >
+        <Card.Header pb="2">
           <Heading color="fg" size="md">
             Datos de la cuenta
           </Heading>
         </Card.Header>
+
         <Card.Body>
-          <Stack gap="4">
+          <Stack gap="5">
             <Box>
-              <Text color="fg.muted" fontSize="sm">
+              <Text color="fg.muted" fontSize="xs" fontWeight="semibold" textTransform="uppercase">
                 Nombre
               </Text>
-              <Text color="fg" fontWeight="medium">
+              <Text color="fg" fontSize="md" fontWeight="medium" mt="1">
                 {user?.name ?? "Sin nombre"}
               </Text>
             </Box>
 
             <Box>
-              <Text color="fg.muted" fontSize="sm">
+              <Text color="fg.muted" fontSize="xs" fontWeight="semibold" textTransform="uppercase">
                 Correo electrónico
               </Text>
-              <Text color="fg" fontWeight="medium">
+              <Text color="fg" fontSize="md" fontWeight="medium" mt="1">
                 {user?.email ?? "Sin correo"}
               </Text>
             </Box>
 
             <Box>
-              <Text color="fg.muted" fontSize="sm">
+              <Text color="fg.muted" fontSize="xs" fontWeight="semibold" textTransform="uppercase" mb="1.5">
                 Rol
               </Text>
-              <Badge colorPalette="brand" variant="subtle">
+              <Badge colorPalette="brand" size="md" variant="subtle">
                 {user?.roleName || "Sin rol"}
               </Badge>
             </Box>
