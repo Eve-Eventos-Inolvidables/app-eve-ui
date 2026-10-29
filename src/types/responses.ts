@@ -17,7 +17,6 @@ export interface Pagination {
 
 export interface ErrorData {
   message: string | null;
-  statusCode?: number;
   status?: number;
 }
 

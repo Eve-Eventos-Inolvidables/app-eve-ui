@@ -9,7 +9,7 @@ export const RequirePermission = () => {
   }
 
   const roleName = user.roleName?.toLowerCase() ?? "";
-  const hasPermission = roleName === "admin";
+  const hasPermission = roleName === "administrador";
 
   return hasPermission ? <Outlet /> : <Navigate to="/dash" replace />;
 };

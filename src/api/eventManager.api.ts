@@ -14,8 +14,8 @@ export interface CreateEventManagerRequest {
     managerId: number;
     eventId: number;
 }
-export const EventManagerApi = {
-    getManagers: (params:PagedRequest) => apiClient.get<ApiPagedResponse<EventManager>>(MANAGER_URL + "/api/managers", { params }).then(res => res.data),
+export const eventManagerApi = {
+    getManagers: (params:PagedRequest) => apiClient.get<ApiPagedResponse<EventManager[]>>(MANAGER_URL + "/api/managers", { params }).then(res => res.data),
     createEventManager: (request: CreateEventManagerRequest) => apiClient.post<ApiResponse<EventManager>>(MANAGER_URL + "/api/managers", request).then(res => res.data),
     getEventManagerById: (id: number) => apiClient.get<ApiResponse<EventManager>>(MANAGER_URL + `/api/managers/${id}`).then(res => res.data),
     delete: (id: number) => apiClient.delete(MANAGER_URL + `/api/managers/${id}`).then(res => res.data),
