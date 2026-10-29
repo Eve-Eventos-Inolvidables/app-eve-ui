@@ -7,11 +7,14 @@ import type {
 } from "../types/auth.types";
 import { apiClient } from "./client";
 
+const auth_url=import.meta.env.
+VITE_AUTH_URL;
+
 export async function login(
   payload: LoginRequest,
 ): Promise<ApiResponse<LoginResponse>> {
   const { data } = await apiClient.post<ApiResponse<LoginResponse>>(
-    "/api/auth/login",
+    auth_url+"/api/auth/login",
     payload,
   );
   return data;
