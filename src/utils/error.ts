@@ -1,27 +1,33 @@
 import axios from "axios";
-import type { ApiResponse } from "../types/auth.types";
+import type { ApiErrorResponse } from "../types/responses";
+
+function extractMessage(data?: ApiErrorResponse): string | null {
+  const detail = data?.error ?? data?.data;
+
+  if (detail?.message?.trim()) {
+    return detail.message;
+  }
+
+  if (data?.message?.trim()) {
+    return data.message;
+  }
+
+  return null;
+}
 
 export function getErrorMessage(
   error: unknown,
-  fallback = "Ocurrió un error inesperado",
-) {
-  if (axios.isAxiosError(error)) {
-    const data = error.response?.data as Partial<ApiResponse<unknown>> | undefined;
-
-    if (typeof data?.message === "string" && data.message.length > 0) {
-      return data.message;
-    }
-
-    if (error.response?.status === 401) {
-      return "Credenciales inválidas";
-    }
-
+  fallback = "Error desconocido",
+): string {
+  if (axios.isAxiosError<ApiErrorResponse>(error)) {
     if (!error.response) {
       return "No se pudo conectar con el servidor";
     }
+
+    return extractMessage(error.response.data) ?? fallback;
   }
 
-  if (error instanceof Error && error.message.length > 0) {
+  if (error instanceof Error && error.message.trim().length > 0) {
     return error.message;
   }
 

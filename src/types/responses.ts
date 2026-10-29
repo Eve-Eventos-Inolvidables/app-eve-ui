@@ -17,8 +17,11 @@ export interface Pagination {
 
 export interface ErrorData {
   message: string | null;
-  status: number;
+  statusCode?: number;
+  status?: number;
 }
 
-export type ApiErrorResponse = ApiResponse<ErrorData>; 
+export type ApiErrorResponse = ApiResponse<ErrorData> & {
+  error?: ErrorData;
+};
 
