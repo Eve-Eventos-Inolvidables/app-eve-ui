@@ -1,0 +1,12 @@
+.modal-content {
+  width: 100%;
+  border-radius: 16px;
+}
+
+.modal-title {
+  font-family: system-ui, -apple-system, sans-serif;
+  font-weight: 600;
+  font-size: 16px;
+  color: inherit;
+  margin: 0 0 1rem;
+}

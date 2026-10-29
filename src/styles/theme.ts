@@ -1,4 +1,5 @@
 import { createSystem, defaultConfig, defineConfig } from "@chakra-ui/react";
+import type { SystemStyleObject } from "@chakra-ui/react";
 
 const config = defineConfig({
   globalCss: {
@@ -8,8 +9,10 @@ const config = defineConfig({
     body: {
       bg: "bg",
       color: "fg",
-      WebkitFontSmoothing: "antialiased",
-      MozOsxFontSmoothing: "grayscale",
+      ...({
+        WebkitFontSmoothing: "antialiased",
+        MozOsxFontSmoothing: "grayscale",
+      } as SystemStyleObject),
     },
   },
   theme: {
@@ -48,15 +51,39 @@ const config = defineConfig({
           DEFAULT: { value: { _light: "{colors.gray.50}", _dark: "{colors.gray.900}" } },
           subtle: { value: { _light: "{colors.gray.100}", _dark: "{colors.gray.800}" } },
           panel: { value: { _light: "{colors.white}", _dark: "{colors.gray.800}" } },
+          header: {
+            value: {
+              _light: "rgba(255, 255, 255, 0.72)",
+              _dark: "rgba(31, 41, 55, 0.72)",
+            },
+          },
         },
         fg: {
           DEFAULT: { value: { _light: "{colors.gray.800}", _dark: "{colors.gray.50}" } },
           muted: { value: { _light: "{colors.gray.600}", _dark: "{colors.gray.400}" } },
           inverted: { value: { _light: "{colors.white}", _dark: "{colors.gray.900}" } },
+          header: {
+            value: {
+              _light: "{colors.gray.900}",
+              _dark: "{colors.gray.50}",
+            },
+          },
+          headerMuted: {
+            value: {
+              _light: "{colors.gray.600}",
+              _dark: "{colors.gray.400}",
+            },
+          },
         },
         border: {
           DEFAULT: { value: { _light: "{colors.gray.200}", _dark: "{colors.gray.700}" } },
           subtle: { value: { _light: "{colors.gray.100}", _dark: "{colors.gray.800}" } },
+          header: {
+            value: {
+              _light: "rgba(229, 231, 235, 0.8)",
+              _dark: "rgba(55, 65, 81, 0.8)",
+            },
+          },
         },
         brand: {
           contrast: { value: { _light: "{colors.white}", _dark: "{colors.gray.900}" } },

@@ -35,6 +35,10 @@ export function AppLayout() {
         borderBottomColor="border.header"
         borderBottomWidth="1px"
         position="sticky"
+        style={{
+          backdropFilter: "blur(16px)",
+          WebkitBackdropFilter: "blur(16px)",
+        }}
         top="0"
         zIndex="10"
       >
