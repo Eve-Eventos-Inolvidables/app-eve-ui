@@ -1,4 +1,8 @@
-import { useMutation, useQuery } from "@tanstack/react-query";
+import {
+  keepPreviousData,
+  useMutation,
+  useQuery,
+} from "@tanstack/react-query";
 import { createEvent, getEvents } from "../api/events.api";
 import type { CreateEventRequest } from "../types/event.types";
 import type { GetEventsRequest } from "../types/request";
@@ -10,10 +14,15 @@ export const eventKeys = {
   list: (params: GetEventsRequest) => [...eventKeys.lists(), params] as const,
 };
 
-export function useEventsQuery(params: GetEventsRequest = {}) {
+export function useEventsQuery(
+  params: GetEventsRequest = {},
+  enabled = true,
+) {
   return useQuery({
     queryKey: eventKeys.list(params),
     queryFn: () => getEvents(params),
+    enabled,
+    placeholderData: keepPreviousData,
   });
 }
 

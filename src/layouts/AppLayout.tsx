@@ -11,9 +11,10 @@ import { Outlet, useNavigate } from "react-router-dom";
 import { ColorModeButton } from "../components/ui/ColorModeButton";
 import { toaster } from "../components/ui/chakra-base/toaster-instance";
 import { useAuthStore } from "../stores/auth.store";
-import {LogOut, Ticket} from 'lucide-react'
+import { LogOut, Ticket, Users } from "lucide-react";
 export function AppLayout() {
   const user = useAuthStore((state) => state.user);
+  const isAdmin = useAuthStore((state) => state.isAdmin);
   const clearAuth = useAuthStore((state) => state.clearAuth);
   const navigate = useNavigate();
 
@@ -69,6 +70,16 @@ export function AppLayout() {
           </Flex>
 
           <Box flex="1" />
+
+          {isAdmin && (
+            <Button
+              onClick={() => navigate("/managers")}
+              size="sm"
+              variant="ghost"
+            >
+              <Users /> Event Managers
+            </Button>
+          )}
 
           <ColorModeButton />
 

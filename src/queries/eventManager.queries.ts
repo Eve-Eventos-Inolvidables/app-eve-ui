@@ -1,10 +1,20 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  keepPreviousData,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import {
   eventManagerApi,
   type CreateEventManagerRequest,
 } from "../api/eventManager.api";
 import { usersApi } from "../api/users.api";
 import type { PagedRequest } from "../types/request";
+import type {
+  ApiErrorResponse,
+  ApiResponse,
+  Pagination,
+} from "../types/responses";
 
 export interface EventManagerRowData {
   id: number;
@@ -13,7 +23,24 @@ export interface EventManagerRowData {
   assignedAt: string;
   name: string;
   email: string;
-  event: string;
+}
+
+export interface EventManagersWithUsersResult {
+  rows: EventManagerRowData[];
+  pagination: Pagination;
+}
+
+function ensureSuccess(
+  response: ApiResponse<unknown> | null | undefined,
+  fallbackMessage: string,
+): void {
+  if (response && !response.success) {
+    throw new Error(
+      (response as ApiErrorResponse).data?.message ||
+        response.message ||
+        fallbackMessage,
+    );
+  }
 }
 
 export const eventManagerKeys = {
@@ -28,7 +55,7 @@ export const eventManagerKeys = {
 
 async function getEventManagersWithUsers(
   params: PagedRequest,
-): Promise<EventManagerRowData[]> {
+): Promise<EventManagersWithUsersResult> {
   const response = await eventManagerApi.getManagers(params);
   const managers = response.data ?? [];
   const managerIds = [...new Set(managers.map((manager) => manager.managerId))];
@@ -47,25 +74,33 @@ async function getEventManagersWithUsers(
     }),
   );
 
-  return managers.map((manager) => {
-    const user = usersById.get(manager.managerId);
+  return {
+    rows: managers.map((manager) => {
+      const user = usersById.get(manager.managerId);
 
-    return {
-      id: manager.id,
-      managerId: manager.managerId,
-      eventId: manager.eventId,
-      assignedAt: manager.assignedAt,
-      name: user?.name ?? "Sin nombre",
-      email: user?.email ?? "-",
-      event: "-",
-    };
-  });
+      return {
+        id: manager.id,
+        managerId: manager.managerId,
+        eventId: manager.eventId,
+        assignedAt: manager.assignedAt,
+        name: user?.name ?? "Sin nombre",
+        email: user?.email ?? "-",
+      };
+    }),
+    pagination: response.pagination ?? {
+      page: params.page ?? 0,
+      size: params.size ?? managers.length,
+      totalPages: 1,
+      totalItems: managers.length,
+    },
+  };
 }
 
 export function useEventManagersWithUsersQuery(params: PagedRequest = {}) {
   return useQuery({
     queryKey: eventManagerKeys.withUsers(params),
     queryFn: () => getEventManagersWithUsers(params),
+    placeholderData: keepPreviousData,
   });
 }
 
@@ -88,8 +123,10 @@ export function useCreateEventManagerMutation() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (request: CreateEventManagerRequest) =>
-      eventManagerApi.createEventManager(request),
+    mutationFn: async (request: CreateEventManagerRequest) => {
+      const response = await eventManagerApi.createEventManager(request);
+      return ensureSuccess(response, "No se pudo asignar el manager.");
+    },
     onSuccess: () =>
       queryClient.invalidateQueries({ queryKey: eventManagerKeys.all }),
   });
@@ -99,7 +136,10 @@ export function useDeleteEventManagerMutation() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (id: number) => eventManagerApi.delete(id),
+    mutationFn: async (id: number) => {
+      const response = await eventManagerApi.delete(id);
+      return ensureSuccess(response, "No se pudo desasignar el manager.");
+    },
     onSuccess: () =>
       queryClient.invalidateQueries({ queryKey: eventManagerKeys.all }),
   });

@@ -1,4 +1,9 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  keepPreviousData,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import {
   rolesApi,
   usersApi,
@@ -19,10 +24,15 @@ export const roleKeys = {
   all: ["roles"] as const,
 };
 
-export function useUsersQuery(params: PagedRequestByName = {}) {
+export function useUsersQuery(
+  params: PagedRequestByName = {},
+  enabled = true,
+) {
   return useQuery({
     queryKey: userKeys.list(params),
     queryFn: () => usersApi.getUsers(params),
+    enabled,
+    placeholderData: keepPreviousData,
   });
 }
 
