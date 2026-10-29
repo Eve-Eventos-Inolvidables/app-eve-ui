@@ -24,10 +24,10 @@ export const router = createBrowserRouter([
         children: [
           { index: true, element: <Navigate to="/dash" replace /> },
           { path: "/dash", element: <Dashboard /> },
-          { path: "/event/create", element: <EventCreate /> },
           {
             element: <RequirePermission />,
-            children: [{ path: "/managers", element: <EventManagers /> }],
+            children: [{ path: "/managers", element: <EventManagers /> },
+          { path: "/event/create", element: <EventCreate /> }],
           },
         ],
       },
