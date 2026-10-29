@@ -31,7 +31,7 @@ import { getErrorMessage } from "../../utils/error";
 
 const USER_PAGE_SIZE = 8;
 const EVENT_PAGE_SIZE = 6;
-const MANAGER_TABLE_PAGE_SIZE = 10;
+const MANAGER_TABLE_PAGE_SIZE = 5;
 
 const dateFormatter = new Intl.DateTimeFormat("es-AR", {
   day: "2-digit",
