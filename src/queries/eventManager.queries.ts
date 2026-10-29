@@ -47,6 +47,7 @@ export const eventManagerKeys = {
   all: ["eventManagers"] as const,
   lists: () => [...eventManagerKeys.all, "list"] as const,
   list: (params: PagedRequest) => [...eventManagerKeys.lists(), params] as const,
+  allPages: () => [...eventManagerKeys.all, "allPages"] as const,
   details: () => [...eventManagerKeys.all, "detail"] as const,
   detail: (id: number) => [...eventManagerKeys.details(), id] as const,
   withUsers: (params: PagedRequest) =>
@@ -108,6 +109,35 @@ export function useEventManagersQuery(params: PagedRequest = {}) {
   return useQuery({
     queryKey: eventManagerKeys.list(params),
     queryFn: () => eventManagerApi.getManagers(params),
+  });
+}
+
+async function getAllEventManagers() {
+  const firstPage = await eventManagerApi.getManagers({ page: 0, size: 100 });
+  const pageCount = Math.max(firstPage.pagination?.totalPages ?? 1, 1);
+  const pageSize = firstPage.pagination?.size || 100;
+
+  if (pageCount === 1) {
+    return firstPage.data ?? [];
+  }
+
+  const remainingPages = await Promise.all(
+    Array.from({ length: pageCount - 1 }, (_, index) =>
+      eventManagerApi.getManagers({ page: index + 1, size: pageSize }),
+    ),
+  );
+
+  return [
+    ...(firstPage.data ?? []),
+    ...remainingPages.flatMap((response) => response.data ?? []),
+  ];
+}
+
+export function useAllEventManagersQuery(enabled = true) {
+  return useQuery({
+    queryKey: eventManagerKeys.allPages(),
+    queryFn: getAllEventManagers,
+    enabled,
   });
 }
 

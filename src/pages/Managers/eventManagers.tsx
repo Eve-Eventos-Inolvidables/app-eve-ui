@@ -2,35 +2,36 @@ import {
   Badge,
   Box,
   Button,
+  Checkbox,
   Dialog,
   Field,
   Flex,
   Heading,
-  IconButton,
   Input,
   Portal,
   Stack,
   Table,
   Text,
 } from "@chakra-ui/react";
-import { Check, UserMinus, UserPlus } from "lucide-react";
+import { Check, Eye, UserPlus } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toaster } from "../../components/ui/chakra-base/toaster-instance";
 import {
+  useAllEventManagersQuery,
   useCreateEventManagerMutation,
-  useDeleteEventManagerMutation,
-  useEventManagersWithUsersQuery,
-  type EventManagerRowData,
 } from "../../queries/eventManager.queries";
-import { useEventsQuery } from "../../queries/events.queries";
-import { useUsersQuery } from "../../queries/users.queries";
+import {
+  useAllEventsQuery,
+  useEventsQuery,
+} from "../../queries/events.queries";
+import { useAllUsersQuery } from "../../queries/users.queries";
 import type { UserDto } from "../../types/auth.types";
 import type { SimpleEventDto } from "../../types/event.types";
 import { getErrorMessage } from "../../utils/error";
 
-const PAGE_SIZE = 10;
 const USER_PAGE_SIZE = 8;
 const EVENT_PAGE_SIZE = 6;
+const MANAGER_TABLE_PAGE_SIZE = 10;
 
 const dateFormatter = new Intl.DateTimeFormat("es-AR", {
   day: "2-digit",
@@ -44,7 +45,6 @@ function formatDate(value: string): string {
 
 export default function EventManagers() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [pageIndex, setPageIndex] = useState(0);
   const [eventSearch, setEventSearch] = useState("");
   const [debouncedEventSearch, setDebouncedEventSearch] = useState("");
   const [eventPageIndex, setEventPageIndex] = useState(0);
@@ -52,21 +52,11 @@ export default function EventManagers() {
     null,
   );
   const [userSearch, setUserSearch] = useState("");
-  const [debouncedUserSearch, setDebouncedUserSearch] = useState("");
   const [userPageIndex, setUserPageIndex] = useState(0);
-
-  const {
-    data: eventManagersData,
-    error,
-    isError,
-    isPending,
-    isFetching,
-  } = useEventManagersWithUsersQuery({ page: pageIndex, size: PAGE_SIZE });
-
-  const rows = eventManagersData?.rows ?? [];
-  const pagination = eventManagersData?.pagination;
-  const totalPages = pagination?.totalPages ?? 0;
-  const currentPage = totalPages > 0 ? Math.min(pageIndex + 1, totalPages) : 1;
+  const [selectedManagerIds, setSelectedManagerIds] = useState<number[]>([]);
+  const [isAssigning, setIsAssigning] = useState(false);
+  const [managerDetails, setManagerDetails] = useState<UserDto | null>(null);
+  const [managerTablePageIndex, setManagerTablePageIndex] = useState(0);
 
   const eventsQuery = useEventsQuery(
     {
@@ -83,30 +73,46 @@ export default function EventManagers() {
   const currentEventsPage =
     eventsTotalPages > 0 ? Math.min(eventPageIndex + 1, eventsTotalPages) : 1;
 
-  const usersQuery = useUsersQuery(
-    {
-      page: userPageIndex,
-      size: USER_PAGE_SIZE,
-      name: debouncedUserSearch || undefined,
-    },
-    isDialogOpen,
+  const usersQuery = useAllUsersQuery();
+  const managers = (usersQuery.data ?? []).filter(
+    (user) => user.roleName?.trim().toLocaleLowerCase() === "manager",
+  );
+  const managerTableTotalPages = Math.ceil(
+    managers.length / MANAGER_TABLE_PAGE_SIZE,
+  );
+  const currentManagerTablePage =
+    managerTableTotalPages > 0
+      ? Math.min(managerTablePageIndex + 1, managerTableTotalPages)
+      : 1;
+  const managerTableRows = managers.slice(
+    managerTablePageIndex * MANAGER_TABLE_PAGE_SIZE,
+    (managerTablePageIndex + 1) * MANAGER_TABLE_PAGE_SIZE,
   );
 
-  const users = usersQuery.data?.data ?? [];
-  const usersPagination = usersQuery.data?.pagination;
-  const usersTotalPages = usersPagination?.totalPages ?? 0;
+  const normalizedUserSearch = userSearch.trim().toLocaleLowerCase();
+  const filteredManagers = managers.filter((user) =>
+    `${user.name} ${user.email}`
+      .toLocaleLowerCase()
+      .includes(normalizedUserSearch),
+  );
+  const usersTotalPages = Math.ceil(filteredManagers.length / USER_PAGE_SIZE);
   const currentUsersPage =
     usersTotalPages > 0 ? Math.min(userPageIndex + 1, usersTotalPages) : 1;
+  const users = filteredManagers.slice(
+    userPageIndex * USER_PAGE_SIZE,
+    (userPageIndex + 1) * USER_PAGE_SIZE,
+  );
+
+  const eventManagersQuery = useAllEventManagersQuery(Boolean(managerDetails));
+  const detailEventsQuery = useAllEventsQuery(Boolean(managerDetails));
+  const assignments = (eventManagersQuery.data ?? []).filter(
+    (assignment) => assignment.managerId === managerDetails?.id,
+  );
+  const eventsById = new Map(
+    (detailEventsQuery.data ?? []).map((event) => [event.id, event]),
+  );
 
   const createMutation = useCreateEventManagerMutation();
-  const deleteMutation = useDeleteEventManagerMutation();
-
-  const pendingManagerId = createMutation.isPending
-    ? createMutation.variables?.managerId
-    : undefined;
-  const deletingManagerId = deleteMutation.isPending
-    ? deleteMutation.variables
-    : undefined;
 
   useEffect(() => {
     const timeout = window.setTimeout(() => {
@@ -116,15 +122,9 @@ export default function EventManagers() {
     return () => window.clearTimeout(timeout);
   }, [eventSearch]);
 
-  useEffect(() => {
-    const timeout = window.setTimeout(() => {
-      setDebouncedUserSearch(userSearch.trim());
-    }, 350);
-
-    return () => window.clearTimeout(timeout);
-  }, [userSearch]);
-
   const handleDialogOpenChange = (details: { open: boolean }) => {
+    if (!details.open && isAssigning) return;
+
     setIsDialogOpen(details.open);
 
     if (!details.open) {
@@ -133,8 +133,9 @@ export default function EventManagers() {
       setEventPageIndex(0);
       setSelectedEvent(null);
       setUserSearch("");
-      setDebouncedUserSearch("");
       setUserPageIndex(0);
+      setSelectedManagerIds([]);
+      setIsAssigning(false);
     }
   };
 
@@ -148,63 +149,77 @@ export default function EventManagers() {
     setUserPageIndex(0);
   };
 
-  const handleAssign = (user: UserDto) => {
-    if (!selectedEvent) {
-      toaster.create({
-        title: "Selecciona un evento",
-        description: "Elige un evento antes de asignar el manager.",
-        type: "warning",
-      });
-      return;
-    }
-
-    createMutation.mutate(
-      { managerId: user.id, eventId: selectedEvent.id },
-      {
-        onSuccess: () => {
-          toaster.create({
-            title: "Manager asignado",
-            description: `${user.name} fue asignado al evento ${selectedEvent.name}.`,
-            type: "success",
-          });
-        },
-        onError: (mutationError) => {
-          toaster.create({
-            title: "No se pudo asignar el manager",
-            description: getErrorMessage(
-              mutationError,
-              "No se pudo asignar el manager.",
-            ),
-            type: "error",
-          });
-        },
-      },
+  const handleManagerToggle = (managerId: number, checked: boolean) => {
+    setSelectedManagerIds((current) =>
+      checked
+        ? current.includes(managerId)
+          ? current
+          : [...current, managerId]
+        : current.filter((id) => id !== managerId),
     );
   };
 
-  const handleUnassign = (manager: EventManagerRowData) => {
-    deleteMutation.mutate(manager.id, {
-      onSuccess: () => {
-        if (rows.length === 1 && pageIndex > 0) {
-          setPageIndex((current) => Math.max(current - 1, 0));
-        }
+  const handleAssignSelected = async () => {
+    if (!selectedEvent || selectedManagerIds.length === 0 || isAssigning) return;
 
-        toaster.create({
-          title: "Manager desasignado",
-          description: `${manager.name} fue desasignado del evento #${manager.eventId}.`,
-          type: "success",
+    const event = selectedEvent;
+    const selectedManagers = managers.filter((manager) =>
+      selectedManagerIds.includes(manager.id),
+    );
+    const succeeded: UserDto[] = [];
+    const failed: { manager: UserDto; message: string }[] = [];
+
+    setIsAssigning(true);
+
+    for (const manager of selectedManagers) {
+      try {
+        await createMutation.mutateAsync({
+          managerId: manager.id,
+          eventId: event.id,
         });
-      },
-      onError: (mutationError) => {
-        toaster.create({
-          title: "No se pudo desasignar el manager",
-          description: getErrorMessage(
+        succeeded.push(manager);
+      } catch (mutationError) {
+        failed.push({
+          manager,
+          message: getErrorMessage(
             mutationError,
-            "No se pudo desasignar el manager.",
+            "No se pudo asignar el manager.",
           ),
-          type: "error",
         });
-      },
+      }
+    }
+
+    setIsAssigning(false);
+    handleDialogOpenChange({ open: false });
+
+    const descriptionParts = [
+      `${succeeded.length} de ${selectedManagers.length} managers asignados a ${event.name}.`,
+    ];
+    if (failed.length > 0) {
+      const failedDetails = failed
+        .slice(0, 3)
+        .map(({ manager, message }) => `${manager.name}: ${message}`)
+        .join("; ");
+      const remainingFailures = failed.length - 3;
+      descriptionParts.push(
+        `No se pudieron asignar: ${failedDetails}${remainingFailures > 0 ? `; y ${remainingFailures} más` : ""}.`,
+      );
+    }
+
+    toaster.create({
+      title:
+        failed.length === 0
+          ? "Asignación completada"
+          : succeeded.length > 0
+            ? "Asignación parcial"
+            : "No se pudo completar la asignación",
+      description: descriptionParts.join(" "),
+      type:
+        failed.length === 0
+          ? "success"
+          : succeeded.length > 0
+            ? "warning"
+            : "error",
     });
   };
 
@@ -218,10 +233,10 @@ export default function EventManagers() {
       >
         <Box>
           <Heading color="fg" size="2xl">
-            Gestión de Event Managers
+            Event Managers
           </Heading>
           <Text color="fg.muted" mt="2">
-            Administra los managers asignados a cada evento.
+            Consulta managers y eventos asignados, o asigna managers a eventos.
           </Text>
         </Box>
 
@@ -246,55 +261,45 @@ export default function EventManagers() {
               <Table.Row>
                 <Table.ColumnHeader>Nombre</Table.ColumnHeader>
                 <Table.ColumnHeader>Email</Table.ColumnHeader>
-                <Table.ColumnHeader>Fecha de asignación</Table.ColumnHeader>
-                <Table.ColumnHeader>Evento</Table.ColumnHeader>
                 <Table.ColumnHeader textAlign="end">Acciones</Table.ColumnHeader>
               </Table.Row>
             </Table.Header>
             <Table.Body>
-              {isPending ? (
+              {usersQuery.isPending ? (
                 <Table.Row>
-                  <Table.Cell colSpan={5} color="fg.muted" textAlign="center">
-                    Cargando event managers...
+                  <Table.Cell colSpan={3} color="fg.muted" textAlign="center">
+                    Cargando managers...
                   </Table.Cell>
                 </Table.Row>
-              ) : isError ? (
+              ) : usersQuery.isError ? (
                 <Table.Row>
-                  <Table.Cell colSpan={5} color="fg.muted" textAlign="center">
+                  <Table.Cell colSpan={3} color="fg.muted" textAlign="center">
                     {getErrorMessage(
-                      error,
-                      "No se pudieron cargar los event managers.",
+                      usersQuery.error,
+                      "No se pudieron cargar los usuarios.",
                     )}
                   </Table.Cell>
                 </Table.Row>
-              ) : rows.length === 0 ? (
+              ) : managers.length === 0 ? (
                 <Table.Row>
-                  <Table.Cell colSpan={5} color="fg.muted" textAlign="center">
-                    No hay event managers asignados.
+                  <Table.Cell colSpan={3} color="fg.muted" textAlign="center">
+                    No hay usuarios con rol Manager.
                   </Table.Cell>
                 </Table.Row>
               ) : (
-                rows.map((manager) => (
+                managerTableRows.map((manager) => (
                   <Table.Row key={manager.id}>
                     <Table.Cell fontWeight="medium">{manager.name}</Table.Cell>
                     <Table.Cell color="fg.muted">{manager.email}</Table.Cell>
-                    <Table.Cell color="fg.muted">
-                      {formatDate(manager.assignedAt)}
-                    </Table.Cell>
-                    <Table.Cell color="fg.muted">
-                      #{manager.eventId}
-                    </Table.Cell>
                     <Table.Cell textAlign="end">
-                      <IconButton
-                        aria-label={`Desasignar a ${manager.name} del evento`}
-                        colorPalette="red"
-                        loading={deletingManagerId === manager.id}
-                        onClick={() => handleUnassign(manager)}
+                      <Button
+                        aria-label={`Ver eventos asignados a ${manager.name}`}
+                        onClick={() => setManagerDetails(manager)}
                         size="sm"
-                        variant="ghost"
+                        variant="outline"
                       >
-                        <UserMinus />
-                      </IconButton>
+                        <Eye /> Detalles
+                      </Button>
                     </Table.Cell>
                   </Table.Row>
                 ))
@@ -303,41 +308,163 @@ export default function EventManagers() {
           </Table.Root>
         </Table.ScrollArea>
 
-        {!isPending && !isError && rows.length > 0 && (
-          <Flex
-            align="center"
-            borderTopColor="border"
-            borderTopWidth="1px"
-            gap="3"
-            justify="space-between"
-            px="4"
-            py="3"
-          >
-            <Text color="fg.muted" fontSize="sm">
-              Página {currentPage} de {Math.max(totalPages, 1)} ·{" "}
-              {pagination?.totalItems ?? rows.length} asignaciones
-            </Text>
-            <Flex gap="2">
-              <Button
-                disabled={pageIndex <= 0 || isFetching}
-                onClick={() => setPageIndex((current) => Math.max(current - 1, 0))}
-                size="sm"
-                variant="outline"
-              >
-                Anterior
-              </Button>
-              <Button
-                disabled={isFetching || currentPage >= totalPages}
-                onClick={() => setPageIndex((current) => current + 1)}
-                size="sm"
-                variant="outline"
-              >
-                Siguiente
-              </Button>
+        {!usersQuery.isPending &&
+          !usersQuery.isError &&
+          managers.length > 0 && (
+            <Flex
+              align="center"
+              borderTopColor="border"
+              borderTopWidth="1px"
+              gap="3"
+              justify="space-between"
+              px="4"
+              py="3"
+            >
+              <Text color="fg.muted" fontSize="sm">
+                Página {currentManagerTablePage} de{" "}
+                {Math.max(managerTableTotalPages, 1)} · {managers.length} managers
+              </Text>
+              <Flex gap="2">
+                <Button
+                  disabled={managerTablePageIndex <= 0}
+                  onClick={() =>
+                    setManagerTablePageIndex((current) =>
+                      Math.max(current - 1, 0),
+                    )
+                  }
+                  size="sm"
+                  variant="outline"
+                >
+                  Anterior
+                </Button>
+                <Button
+                  disabled={currentManagerTablePage >= managerTableTotalPages}
+                  onClick={() =>
+                    setManagerTablePageIndex((current) => current + 1)
+                  }
+                  size="sm"
+                  variant="outline"
+                >
+                  Siguiente
+                </Button>
+              </Flex>
             </Flex>
-          </Flex>
-        )}
+          )}
       </Box>
+
+      <Dialog.Root
+        onOpenChange={({ open }) => {
+          if (!open) setManagerDetails(null);
+        }}
+        open={Boolean(managerDetails)}
+        size="lg"
+      >
+        <Portal>
+          <Dialog.Backdrop />
+          <Dialog.Positioner>
+            <Dialog.Content maxH="85vh" overflowY="auto">
+              <Dialog.Header>
+                <Dialog.Title>
+                  Eventos asignados a {managerDetails?.name}
+                </Dialog.Title>
+              </Dialog.Header>
+              <Dialog.Body>
+                <Stack gap="4">
+                  <Text color="fg.muted">{managerDetails?.email}</Text>
+                  {detailEventsQuery.isError && (
+                    <Text color="fg.muted" fontSize="sm">
+                      No se pudieron cargar los nombres de los eventos; se
+                      mostrarán sus identificadores.
+                    </Text>
+                  )}
+                  <Box
+                    borderColor="border"
+                    borderRadius="lg"
+                    borderWidth="1px"
+                    overflow="hidden"
+                  >
+                    <Table.ScrollArea>
+                      <Table.Root size="sm" variant="line">
+                        <Table.Header>
+                          <Table.Row>
+                            <Table.ColumnHeader>Evento</Table.ColumnHeader>
+                            <Table.ColumnHeader>Fecha del evento</Table.ColumnHeader>
+                            <Table.ColumnHeader>Fecha de asignación</Table.ColumnHeader>
+                          </Table.Row>
+                        </Table.Header>
+                        <Table.Body>
+                          {eventManagersQuery.isPending ||
+                          detailEventsQuery.isPending ? (
+                            <Table.Row>
+                              <Table.Cell
+                                colSpan={3}
+                                color="fg.muted"
+                                textAlign="center"
+                              >
+                                Cargando eventos asignados...
+                              </Table.Cell>
+                            </Table.Row>
+                          ) : eventManagersQuery.isError ? (
+                            <Table.Row>
+                              <Table.Cell
+                                colSpan={3}
+                                color="fg.muted"
+                                textAlign="center"
+                              >
+                                {getErrorMessage(
+                                  eventManagersQuery.error,
+                                  "No se pudieron cargar las asignaciones.",
+                                )}
+                              </Table.Cell>
+                            </Table.Row>
+                          ) : assignments.length === 0 ? (
+                            <Table.Row>
+                              <Table.Cell
+                                colSpan={3}
+                                color="fg.muted"
+                                textAlign="center"
+                              >
+                                Este manager todavía no tiene eventos asignados.
+                              </Table.Cell>
+                            </Table.Row>
+                          ) : (
+                            assignments.map((assignment) => {
+                              const event = eventsById.get(assignment.eventId);
+
+                              return (
+                                <Table.Row key={assignment.id}>
+                                  <Table.Cell fontWeight="medium">
+                                    {event?.name ?? `Evento #${assignment.eventId}`}
+                                  </Table.Cell>
+                                  <Table.Cell color="fg.muted">
+                                    {event ? formatDate(event.date) : "-"}
+                                  </Table.Cell>
+                                  <Table.Cell color="fg.muted">
+                                    {formatDate(assignment.assignedAt)}
+                                  </Table.Cell>
+                                </Table.Row>
+                              );
+                            })
+                          )}
+                        </Table.Body>
+                      </Table.Root>
+                    </Table.ScrollArea>
+                  </Box>
+                </Stack>
+              </Dialog.Body>
+              <Dialog.Footer>
+                <Button
+                  onClick={() => setManagerDetails(null)}
+                  variant="outline"
+                >
+                  Cerrar
+                </Button>
+              </Dialog.Footer>
+              <Dialog.CloseTrigger />
+            </Dialog.Content>
+          </Dialog.Positioner>
+        </Portal>
+      </Dialog.Root>
 
       <Dialog.Root
         onOpenChange={handleDialogOpenChange}
@@ -373,18 +500,21 @@ export default function EventManagers() {
                       <Box mb="3">
                         <Text fontWeight="semibold">1. Selecciona un evento</Text>
                         <Text color="fg.muted" fontSize="sm">
-                          Busca por nombre y elige el evento a administrar.
+                          Busca por nombre y elige el evento a administrar. Puedes
+                          volver a pulsar el evento seleccionado para quitar la
+                          selección.
                         </Text>
                       </Box>
-                      <Field.Label>Buscar evento</Field.Label>
-                      <Input
-                        mt="2"
-                        onChange={(event) =>
-                          handleEventSearchChange(event.target.value)
-                        }
-                        placeholder="Buscar evento por nombre"
-                        value={eventSearch}
-                      />
+                      <Field.Root>
+                        <Field.Label>Buscar evento</Field.Label>
+                        <Input
+                          onChange={(event) =>
+                            handleEventSearchChange(event.target.value)
+                          }
+                          placeholder="Buscar evento por nombre"
+                          value={eventSearch}
+                        />
+                      </Field.Root>
                     </Box>
 
                     <Table.ScrollArea maxH="xs">
@@ -451,7 +581,12 @@ export default function EventManagers() {
                                   <Table.Cell textAlign="end">
                                     <Button
                                       colorPalette="brand"
-                                      onClick={() => setSelectedEvent(event)}
+                                      onClick={() => {
+                                        setSelectedEvent(
+                                          isSelected ? null : event,
+                                        );
+                                        setSelectedManagerIds([]);
+                                      }}
                                       size="xs"
                                       variant={
                                         isSelected ? "solid" : "outline"
@@ -459,7 +594,7 @@ export default function EventManagers() {
                                     >
                                       {isSelected ? (
                                         <>
-                                          <Check /> Seleccionado
+                                          <Check /> Quitar selección
                                         </>
                                       ) : (
                                         "Seleccionar"
@@ -570,17 +705,18 @@ export default function EventManagers() {
                           2. Selecciona un usuario
                         </Text>
                         <Text color="fg.muted" fontSize="sm" mb="3">
-                          Elige quién será manager del evento seleccionado.
+                          Marca uno o más managers para el evento seleccionado.
                         </Text>
-                        <Field.Label>Buscar usuario</Field.Label>
-                        <Input
-                          mt="2"
-                          onChange={(event) =>
-                            handleUserSearchChange(event.target.value)
-                          }
-                          placeholder="Buscar por nombre"
-                          value={userSearch}
-                        />
+                        <Field.Root>
+                          <Field.Label>Buscar manager</Field.Label>
+                          <Input
+                            onChange={(event) =>
+                              handleUserSearchChange(event.target.value)
+                            }
+                            placeholder="Buscar por nombre o correo"
+                            value={userSearch}
+                          />
+                        </Field.Root>
                       </Box>
 
                       <Box
@@ -597,9 +733,9 @@ export default function EventManagers() {
                                 <Table.ColumnHeader>Nombre</Table.ColumnHeader>
                                 <Table.ColumnHeader>Email</Table.ColumnHeader>
                                 <Table.ColumnHeader>Rol</Table.ColumnHeader>
-                                <Table.ColumnHeader textAlign="end">
-                                  Acción
-                                </Table.ColumnHeader>
+                                  <Table.ColumnHeader textAlign="end">
+                                    Seleccionar
+                                  </Table.ColumnHeader>
                               </Table.Row>
                             </Table.Header>
                             <Table.Body>
@@ -610,7 +746,7 @@ export default function EventManagers() {
                                     color="fg.muted"
                                     textAlign="center"
                                   >
-                                    Cargando usuarios...
+                                    Cargando managers...
                                   </Table.Cell>
                                 </Table.Row>
                               ) : usersQuery.isError ? (
@@ -626,14 +762,14 @@ export default function EventManagers() {
                                     )}
                                   </Table.Cell>
                                 </Table.Row>
-                              ) : users.length === 0 ? (
+                              ) : filteredManagers.length === 0 ? (
                                 <Table.Row>
                                   <Table.Cell
                                     colSpan={4}
                                     color="fg.muted"
                                     textAlign="center"
                                   >
-                                    No se encontraron usuarios.
+                                    No se encontraron managers.
                                   </Table.Cell>
                                 </Table.Row>
                               ) : (
@@ -654,19 +790,24 @@ export default function EventManagers() {
                                       </Badge>
                                     </Table.Cell>
                                     <Table.Cell textAlign="end">
-                                      <Button
-                                        colorPalette="brand"
-                                        disabled={
-                                          !selectedEvent ||
-                                          createMutation.isPending
+                                      <Checkbox.Root
+                                        aria-label={`Seleccionar a ${user.name}`}
+                                        checked={selectedManagerIds.includes(
+                                          user.id,
+                                        )}
+                                        disabled={!selectedEvent || isAssigning}
+                                        onCheckedChange={(details) =>
+                                          handleManagerToggle(
+                                            user.id,
+                                            details.checked === true,
+                                          )
                                         }
-                                        loading={pendingManagerId === user.id}
-                                        onClick={() => handleAssign(user)}
-                                        size="xs"
-                                        variant="subtle"
                                       >
-                                        <UserPlus /> Asignar
-                                      </Button>
+                                        <Checkbox.HiddenInput />
+                                        <Checkbox.Control>
+                                          <Checkbox.Indicator />
+                                        </Checkbox.Control>
+                                      </Checkbox.Root>
                                     </Table.Cell>
                                   </Table.Row>
                                 ))
@@ -677,7 +818,7 @@ export default function EventManagers() {
 
                         {!usersQuery.isPending &&
                           !usersQuery.isError &&
-                          users.length > 0 && (
+                          filteredManagers.length > 0 && (
                             <Flex
                               align="center"
                               borderTopColor="border"
@@ -690,14 +831,13 @@ export default function EventManagers() {
                               <Text color="fg.muted" fontSize="sm">
                                 Página {currentUsersPage} de{" "}
                                 {Math.max(usersTotalPages, 1)} ·{" "}
-                                {usersPagination?.totalItems ?? users.length}{" "}
-                                usuarios
+                                {filteredManagers.length} managers
                               </Text>
                               <Flex gap="2">
                                 <Button
                                   disabled={
                                     userPageIndex <= 0 ||
-                                    usersQuery.isFetching
+                                    isAssigning
                                   }
                                   onClick={() =>
                                     setUserPageIndex((current) =>
@@ -711,7 +851,7 @@ export default function EventManagers() {
                                 </Button>
                                 <Button
                                   disabled={
-                                    usersQuery.isFetching ||
+                                    isAssigning ||
                                     currentUsersPage >= usersTotalPages
                                   }
                                   onClick={() =>
@@ -733,14 +873,28 @@ export default function EventManagers() {
 
               <Dialog.Footer>
                 <Button
-                  onClick={() => setIsDialogOpen(false)}
+                  disabled={isAssigning}
+                  onClick={() => handleDialogOpenChange({ open: false })}
                   variant="outline"
                 >
-                  Cerrar
+                  Cancelar
+                </Button>
+                <Button
+                  colorPalette="brand"
+                  disabled={
+                    !selectedEvent ||
+                    selectedManagerIds.length === 0 ||
+                    isAssigning
+                  }
+                  loading={isAssigning}
+                  onClick={handleAssignSelected}
+                >
+                  <UserPlus /> Asignar {selectedManagerIds.length}{" "}
+                  {selectedManagerIds.length === 1 ? "manager" : "managers"} y cerrar
                 </Button>
               </Dialog.Footer>
 
-              <Dialog.CloseTrigger />
+              <Dialog.CloseTrigger disabled={isAssigning} />
             </Dialog.Content>
           </Dialog.Positioner>
         </Portal>
