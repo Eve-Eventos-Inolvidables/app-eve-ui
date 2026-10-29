@@ -12,70 +12,30 @@ import {
   Text,
   Textarea,
 } from "@chakra-ui/react";
-import axios from "axios";
 import { useState } from "react";
 import type { FormEvent } from "react";
 import { FiArrowLeft, FiArrowRight, FiCheck, FiPlus, FiTrash2 } from "react-icons/fi";
 import { useNavigate } from "react-router-dom";
 import { toaster } from "../../components/ui/chakra-base/toaster-instance";
-import { useAuthStore } from "../../stores/auth.store";
+import { useCreateEventMutation } from "../../queries/events.queries";
+import type {
+  BasicField,
+  EventDraft,
+  FormErrors,
+  PrecioDraft,
+} from "../../types/event.types";
+import {
+  validateStep1,
+  validateStep2,
+  validateStep3,
+} from "../../schemas/event.schema";
 import { getErrorMessage } from "../../utils/error";
+import {
+  buildPayload,
+  createInitialForm,
+  remapPriceIndexes,
+} from "../../utils/eventForm";
 import "../../styles/EventsCreate/event.css";
-
-interface SectorDraft {
-  eventId: 0;
-  name: string;
-  capacity: string;
-}
-
-interface TandaDraft {
-  eventId: 0;
-  name: string;
-  startDate: string;
-  endDate: string;
-}
-
-interface PrecioDraft {
-  sectorId: string;
-  batchId: string;
-  price: string;
-  quantity: string;
-}
-
-interface EventDraft {
-  categoryId: string;
-  name: string;
-  visibleStart: string;
-  description: string;
-  date: string;
-  kickOffTime: string;
-  ticketsPerPersonLimit: string;
-  primaryColor: string;
-  secondaryColor: string;
-  mapsLink: string;
-  sectores: SectorDraft[];
-  tandas: TandaDraft[];
-  precios: PrecioDraft[];
-}
-
-interface EventPayload {
-  categoryId: number;
-  name: string;
-  visibleStart: string;
-  description: string;
-  date: string;
-  kickOffTime: string;
-  ticketsPerPersonLimit: number;
-  primaryColor: string;
-  secondaryColor: string;
-  mapsLink: string;
-  sectores: { eventId: 0; name: string; capacity: number }[];
-  tandas: { eventId: 0; name: string; startDate: string; endDate: string }[];
-  precios: { sectorId: number; batchId: number; price: number; quantity: number }[];
-}
-
-type BasicField = Exclude<keyof EventDraft, "sectores" | "tandas" | "precios">;
-type FormErrors = Record<string, string>;
 
 const STEPS = [
   { title: "Datos básicos", description: "Información general del evento" },
@@ -83,287 +43,13 @@ const STEPS = [
   { title: "Precios", description: "Precios por sector y tanda" },
 ];
 
-function createInitialForm(): EventDraft {
-  return {
-    categoryId: "",
-    name: "",
-    visibleStart: "",
-    description: "",
-    date: "",
-    kickOffTime: "",
-    ticketsPerPersonLimit: "",
-    primaryColor: "#111111",
-    secondaryColor: "#C8102E",
-    mapsLink: "",
-    sectores: [{ eventId: 0, name: "", capacity: "" }],
-    tandas: [{ eventId: 0, name: "", startDate: "", endDate: "" }],
-    precios: [],
-  };
-}
-
-function isValidUrl(value: string): boolean {
-  try {
-    const url = new URL(value);
-    return url.protocol === "http:" || url.protocol === "https:";
-  } catch {
-    return false;
-  }
-}
-
-function normalizeTime(value: string): string {
-  if (!value) {
-    return "";
-  }
-
-  return value.length === 5 ? `${value}:00` : value;
-}
-
-function validateStep1(form: EventDraft): FormErrors {
-  const errors: FormErrors = {};
-  const categoryId = Number(form.categoryId);
-  const ticketsLimit = Number(form.ticketsPerPersonLimit);
-
-  if (!form.categoryId || !Number.isInteger(categoryId) || categoryId <= 0) {
-    errors.categoryId = "Ingresa un ID de categoría válido.";
-  }
-
-  if (!form.name.trim()) {
-    errors.name = "El nombre del evento es obligatorio.";
-  }
-
-  if (!form.visibleStart) {
-    errors.visibleStart = "La fecha de inicio de visibilidad es obligatoria.";
-  }
-
-  if (!form.date) {
-    errors.date = "La fecha del evento es obligatoria.";
-  }
-
-  if (!form.kickOffTime) {
-    errors.kickOffTime = "La hora de inicio es obligatoria.";
-  }
-
-  if (
-    !form.ticketsPerPersonLimit ||
-    !Number.isInteger(ticketsLimit) ||
-    ticketsLimit <= 0
-  ) {
-    errors.ticketsPerPersonLimit =
-      "El límite de tickets por persona debe ser mayor a 0.";
-  }
-
-  if (!form.primaryColor) {
-    errors.primaryColor = "Selecciona el color primario.";
-  }
-
-  if (!form.secondaryColor) {
-    errors.secondaryColor = "Selecciona el color secundario.";
-  }
-
-  if (form.mapsLink.trim() && !isValidUrl(form.mapsLink.trim())) {
-    errors.mapsLink = "Ingresa un enlace de mapas válido.";
-  }
-
-  return errors;
-}
-
-function validateStep2(form: EventDraft): FormErrors {
-  const errors: FormErrors = {};
-
-  if (form.sectores.length === 0) {
-    errors.sectores = "Agrega al menos un sector.";
-  }
-
-  form.sectores.forEach((sector, index) => {
-    const capacity = Number(sector.capacity);
-
-    if (!sector.name.trim()) {
-      errors[`sectores.${index}.name`] = "El nombre del sector es obligatorio.";
-    }
-
-    if (
-      !sector.capacity ||
-      !Number.isInteger(capacity) ||
-      capacity <= 0
-    ) {
-      errors[`sectores.${index}.capacity`] =
-        "La capacidad debe ser un número entero mayor a 0.";
-    }
-  });
-
-  if (form.tandas.length === 0) {
-    errors.tandas = "Agrega al menos una tanda.";
-  }
-
-  if (!form.date) {
-    errors["tandas.general"] = "Define la fecha del evento en el Paso 1.";
-  }
-
-  form.tandas.forEach((tanda, index) => {
-    if (!tanda.name.trim()) {
-      errors[`tandas.${index}.name`] = "El nombre de la tanda es obligatorio.";
-    }
-
-    if (!tanda.startDate) {
-      errors[`tandas.${index}.startDate`] =
-        "La fecha de inicio de la tanda es obligatoria.";
-    }
-
-    if (!tanda.endDate) {
-      errors[`tandas.${index}.endDate`] =
-        "La fecha de fin de la tanda es obligatoria.";
-    }
-
-    if (
-      tanda.startDate &&
-      tanda.endDate &&
-      tanda.startDate > tanda.endDate
-    ) {
-      errors[`tandas.${index}.endDate`] =
-        "La fecha de fin no puede ser anterior a la fecha de inicio.";
-    }
-
-    if (form.date && tanda.startDate && tanda.startDate > form.date) {
-      errors[`tandas.${index}.startDate`] =
-        "La fecha de inicio no puede ser posterior a la fecha del evento.";
-    }
-
-    if (form.date && tanda.endDate && tanda.endDate > form.date) {
-      errors[`tandas.${index}.endDate`] =
-        "La fecha de fin no puede ser posterior a la fecha del evento.";
-    }
-  });
-
-  return errors;
-}
-
-function validateStep3(form: EventDraft): FormErrors {
-  const errors: FormErrors = {};
-  const combinations = new Set<string>();
-  const quantitiesBySector = new Map<number, number>();
-
-  if (form.precios.length === 0) {
-    errors.precios = "Agrega al menos un precio.";
-  }
-
-  form.precios.forEach((precio, index) => {
-    const sectorId = precio.sectorId === "" ? null : Number(precio.sectorId);
-    const batchId = precio.batchId === "" ? null : Number(precio.batchId);
-    const price = Number(precio.price);
-    const quantity = Number(precio.quantity);
-
-    if (sectorId === null || !form.sectores[sectorId]) {
-      errors[`precios.${index}.sectorId`] = "Selecciona un sector.";
-    }
-
-    if (batchId === null || !form.tandas[batchId]) {
-      errors[`precios.${index}.batchId`] = "Selecciona una tanda.";
-    }
-
-    if (!precio.price || !Number.isFinite(price) || price <= 0) {
-      errors[`precios.${index}.price`] =
-        "El precio debe ser un número mayor a 0.";
-    }
-
-    if (
-      !precio.quantity ||
-      !Number.isInteger(quantity) ||
-      quantity <= 0
-    ) {
-      errors[`precios.${index}.quantity`] =
-        "La cantidad debe ser un número entero mayor a 0.";
-    }
-
-    if (sectorId !== null && batchId !== null) {
-      const combination = `${sectorId}-${batchId}`;
-
-      if (combinations.has(combination)) {
-        errors[`precios.${index}.batchId`] =
-          "Ya existe un precio para este sector y esta tanda.";
-      }
-
-      combinations.add(combination);
-
-      if (
-        Number.isInteger(quantity) &&
-        quantity > 0 &&
-        form.sectores[sectorId]
-      ) {
-        quantitiesBySector.set(
-          sectorId,
-          (quantitiesBySector.get(sectorId) ?? 0) + quantity,
-        );
-      }
-    }
-  });
-
-  quantitiesBySector.forEach((quantity, sectorIndex) => {
-    const sector = form.sectores[sectorIndex];
-    const capacity = Number(sector?.capacity ?? 0);
-
-    if (quantity > capacity) {
-      errors[`precios.sector.${sectorIndex}`] =
-        `La cantidad total de "${sector?.name || `Sector ${sectorIndex + 1}`}" (${quantity}) supera su capacidad (${capacity}).`;
-    }
-  });
-
-  return errors;
-}
-
-function buildPayload(form: EventDraft): EventPayload {
-  return {
-    categoryId: Number(form.categoryId),
-    name: form.name.trim(),
-    visibleStart: form.visibleStart,
-    description: form.description.trim(),
-    date: form.date,
-    kickOffTime: normalizeTime(form.kickOffTime),
-    ticketsPerPersonLimit: Number(form.ticketsPerPersonLimit),
-    primaryColor: form.primaryColor,
-    secondaryColor: form.secondaryColor,
-    mapsLink: form.mapsLink.trim(),
-    sectores: form.sectores.map((sector) => ({
-      eventId: 0,
-      name: sector.name.trim(),
-      capacity: Number(sector.capacity),
-    })),
-    tandas: form.tandas.map((tanda) => ({
-      eventId: 0,
-      name: tanda.name.trim(),
-      startDate: tanda.startDate,
-      endDate: tanda.endDate,
-    })),
-    precios: form.precios.map((precio) => ({
-      sectorId: Number(precio.sectorId),
-      batchId: Number(precio.batchId),
-      price: Number(precio.price),
-      quantity: Number(precio.quantity),
-    })),
-  };
-}
-
-function remapPriceIndexes(
-  prices: PrecioDraft[],
-  field: "sectorId" | "batchId",
-  removedIndex: number,
-): PrecioDraft[] {
-  return prices
-    .filter((price) => price[field] === "" || Number(price[field]) !== removedIndex)
-    .map((price) => {
-      if (price[field] === "" || Number(price[field]) <= removedIndex) {
-        return price;
-      }
-
-      return { ...price, [field]: String(Number(price[field]) - 1) };
-    });
-}
-
 export default function EventCreate() {
   const navigate = useNavigate();
+  const createEventMutation = useCreateEventMutation();
   const [step, setStep] = useState(0);
   const [form, setForm] = useState<EventDraft>(createInitialForm);
   const [errors, setErrors] = useState<FormErrors>({});
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const isSubmitting = createEventMutation.isPending;
 
   const clearErrors = () => {
     setErrors((current) => (Object.keys(current).length === 0 ? current : {}));
@@ -500,7 +186,7 @@ export default function EventCreate() {
     setStep((current) => Math.max(current - 1, 0));
   };
 
-  const handleFinalSubmit = async () => {
+  const handleFinalSubmit = () => {
     const stepErrors = validateStep3(form);
     setErrors(stepErrors);
 
@@ -509,38 +195,27 @@ export default function EventCreate() {
       return;
     }
 
-    setIsSubmitting(true);
+    createEventMutation.mutate(buildPayload(form), {
+      onSuccess: () => {
+        toaster.create({
+          title: "Evento creado",
+          description: "El evento se creó correctamente.",
+          type: "success",
+        });
 
-    try {
-      const token = useAuthStore.getState().token;
-
-      await axios.post(
-        `${import.meta.env.VITE_EVENT_URL}/api/event`,
-        buildPayload(form),
-        {
-          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-        },
-      );
-
-      toaster.create({
-        title: "Evento creado",
-        description: "El evento se creó correctamente.",
-        type: "success",
-      });
-
-      setForm(createInitialForm());
-      setStep(0);
-      setErrors({});
-      navigate("/dash");
-    } catch (error) {
-      toaster.create({
-        title: "No se pudo crear el evento",
-        description: getErrorMessage(error, "No se pudo crear el evento."),
-        type: "error",
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
+        setForm(createInitialForm());
+        setStep(0);
+        setErrors({});
+        navigate("/dash");
+      },
+      onError: (error) => {
+        toaster.create({
+          title: "No se pudo crear el evento",
+          description: getErrorMessage(error, "No se pudo crear el evento."),
+          type: "error",
+        });
+      },
+    });
   };
 
   const handleFormSubmit = (event: FormEvent<HTMLFormElement>) => {
@@ -551,7 +226,7 @@ export default function EventCreate() {
       return;
     }
 
-    void handleFinalSubmit();
+    handleFinalSubmit();
   };
 
   return (
