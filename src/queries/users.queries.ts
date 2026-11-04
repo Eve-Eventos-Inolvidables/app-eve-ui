@@ -88,13 +88,21 @@ export function useUpdateUserMutation() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({
+    mutationFn: async ({
       id,
       body,
     }: {
       id: number;
       body: Partial<CreateUserRequest>;
-    }) => usersApi.updateUser(id, body),
+    }) => {
+      const response = await usersApi.updateUser(id, body);
+
+      if (!response.success) {
+        throw new Error(response.message || "No se pudo actualizar el usuario.");
+      }
+
+      return response;
+    },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: userKeys.all }),
   });
 }
@@ -111,6 +119,14 @@ export function useDeleteUserMutation() {
 export function useRolesQuery() {
   return useQuery({
     queryKey: roleKeys.all,
-    queryFn: () => rolesApi.getAllRoles(),
+    queryFn: async () => {
+      const response = await rolesApi.getAllRoles();
+
+      if (!response.success) {
+        throw new Error(response.message || "No se pudieron cargar los roles.");
+      }
+
+      return response;
+    },
   });
 }

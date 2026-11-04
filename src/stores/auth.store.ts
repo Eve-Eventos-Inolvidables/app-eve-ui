@@ -22,7 +22,9 @@ export const useAuthStore = create<AuthState>()(
         set({
           user,
           token,
-          isAdmin: (user.roleName ?? "").toLowerCase() === "admin",
+          isAdmin: ["admin", "administrador"].includes(
+            (user.roleName ?? "").trim().toLowerCase(),
+          ),
         }),
       clearAuth: () => set({ user: null, token: null, isAdmin: false }),
     }),

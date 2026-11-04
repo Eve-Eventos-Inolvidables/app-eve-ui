@@ -11,12 +11,14 @@ import { Outlet, useNavigate } from "react-router-dom";
 import { ColorModeButton } from "../components/ui/ColorModeButton";
 import { toaster } from "../components/ui/chakra-base/toaster-instance";
 import { useAuthStore } from "../stores/auth.store";
-import { LogOut, Ticket, Users } from "lucide-react";
+import { LogOut, Plus, Ticket, Users } from "lucide-react";
 export function AppLayout() {
   const user = useAuthStore((state) => state.user);
-  const isAdmin = useAuthStore((state) => state.isAdmin);
   const clearAuth = useAuthStore((state) => state.clearAuth);
   const navigate = useNavigate();
+  const isAdmin = ["admin", "administrador"].includes(
+    (user?.roleName ?? "").trim().toLowerCase(),
+  );
 
   const handleLogout = () => {
     clearAuth();
@@ -64,21 +66,44 @@ export function AppLayout() {
             >
               <Ticket  color="white"/>
             </Box>
-            <Heading color="fg.header" size="md">
+            <Button
+                onClick={() => navigate("/dash")}
+                size="sm"
+                variant="ghost"
+              >
+                <Heading color="fg.header" size="md">
               EVE
             </Heading>
+              </Button>
+            
           </Flex>
 
           <Box flex="1" />
 
           {isAdmin && (
-            <Button
-              onClick={() => navigate("/managers")}
-              size="sm"
-              variant="ghost"
-            >
-              <Users /> Event Managers
-            </Button>
+            <>
+              <Button
+                onClick={() => navigate("/event/create")}
+                size="sm"
+                variant="ghost"
+              >
+                <Plus /> Crear evento
+              </Button>
+              <Button
+                onClick={() => navigate("/users")}
+                size="sm"
+                variant="ghost"
+              >
+                <Users /> Usuarios
+              </Button>
+              <Button
+                onClick={() => navigate("/managers")}
+                size="sm"
+                variant="ghost"
+              >
+                <Users /> Event Managers
+              </Button>
+            </>
           )}
 
           <ColorModeButton />
