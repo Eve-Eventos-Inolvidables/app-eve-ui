@@ -7,6 +7,7 @@ import {
 import { createEvent, getEventById, getEvents } from "../api/events.api";
 import type { CreateEventRequest } from "../types/event.types";
 import type { GetEventsRequest } from "../types/request";
+import type { ApiErrorResponse } from "../types/responses";
 
 export const eventKeys = {
   all: ["events"] as const,
