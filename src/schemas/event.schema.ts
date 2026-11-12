@@ -58,7 +58,7 @@ const precioSchema = z.object({
   }, "La cantidad debe ser un número entero mayor a 0."),
 });
 
-export const eventStep1Schema = z.object({
+const eventBasicFields = {
   categoryId: positiveIntegerString("Ingresa un ID de categoría válido."),
   name: z.string().trim().min(1, "El nombre del evento es obligatorio."),
   visibleStart: z
@@ -78,6 +78,19 @@ export const eventStep1Schema = z.object({
       (value) => !value.trim() || isValidUrl(value.trim()),
       "Ingresa un enlace de mapas válido.",
     ),
+};
+
+export const eventStep1Schema = z.object(eventBasicFields);
+
+/**
+ * Field-level schema used by react-hook-form. Cross-field rules live in
+ * `eventStep2Schema` / `eventStep3Schema` and are applied per step.
+ */
+export const eventBaseSchema = z.object({
+  ...eventBasicFields,
+  sectores: z.array(sectorSchema).min(1, "Agrega al menos un sector."),
+  tandas: z.array(tandaSchema).min(1, "Agrega al menos una tanda."),
+  precios: z.array(precioSchema).min(1, "Agrega al menos un precio."),
 });
 
 export const eventStep2Schema = z

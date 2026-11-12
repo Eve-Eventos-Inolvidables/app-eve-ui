@@ -2,6 +2,7 @@ import {
   keepPreviousData,
   useMutation,
   useQuery,
+  useQueryClient,
 } from "@tanstack/react-query";
 import { createEvent, getEventById, getEvents } from "../api/events.api";
 import type { CreateEventRequest } from "../types/event.types";
@@ -35,8 +36,23 @@ export function useGetEventById(id: number) {
   });
 }
 
-export function useCreateEvent() {
+export function useCreateEventMutation() {
+  const queryClient = useQueryClient();
+
   return useMutation({
-    mutationFn: (payload: CreateEventRequest) => createEvent(payload),
+    mutationFn: async (payload: CreateEventRequest) => {
+      const response = await createEvent(payload);
+
+      if (!response.success) {
+        throw new Error(
+          (response as ApiErrorResponse).data?.message ||
+            response.message ||
+            "No se pudo crear el evento.",
+        );
+      }
+
+      return response;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: eventKeys.all }),
   });
 }
