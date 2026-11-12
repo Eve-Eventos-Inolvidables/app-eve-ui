@@ -8,6 +8,9 @@ import {
   Text,
 } from "@chakra-ui/react";
 import { Outlet, useNavigate } from "react-router-dom";
+import { Suspense } from "react";
+import { queryClient } from "../api/queryClient";
+import { RouteFallback } from "../components/ui/RouteFallback";
 import { ColorModeButton } from "../components/ui/ColorModeButton";
 import { toaster } from "../components/ui/chakra-base/toaster-instance";
 import { useAuthStore } from "../stores/auth.store";
@@ -28,6 +31,8 @@ export function AppLayout() {
       type: "success",
     });
     navigate("/login", { replace: true });
+    // Clear after the protected tree unmounts so observers do not refetch.
+    window.setTimeout(() => queryClient.clear(), 0);
   };
 
   return (
@@ -134,7 +139,9 @@ export function AppLayout() {
       </Box>
 
       <Container maxW="6xl" py="8">
-        <Outlet />
+        <Suspense fallback={<RouteFallback />}>
+          <Outlet />
+        </Suspense>
       </Container>
     </Box>
   );

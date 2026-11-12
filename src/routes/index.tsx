@@ -1,20 +1,33 @@
-import { createBrowserRouter, Navigate } from "react-router-dom";
+import { createBrowserRouter, Navigate, Outlet } from "react-router-dom";
 import { AppLayout } from "../layouts/AppLayout";
-import Dashboard from "../pages/dashboard";
-import Login from "../pages/login";
-import Register from "../pages/register";
+import { AuthLayout } from "../layouts/AuthLayout";
 import { ProtectedRoute } from "./guard/ProtectedRoute";
 import { PublicRoute } from "./guard/PublicRoute";
 import { RequirePermission } from "./guard/RequirePermission";
-import EventCreate from "../pages/Events/eventCreate";
-import EventManagers from "../pages/Managers/eventManagers";
-import UserManagement from "../pages/Users/userManagement";
+import {
+  Dashboard,
+  EventCreate,
+  EventManagers,
+  Login,
+  Register,
+  UserManagement,
+} from "./lazyPages";
+
 export const router = createBrowserRouter([
   {
     element: <PublicRoute />,
     children: [
-      { path: "/login", element: <Login /> },
-      { path: "/register", element: <Register /> },
+      {
+        element: (
+          <AuthLayout>
+            <Outlet />
+          </AuthLayout>
+        ),
+        children: [
+          { path: "/login", element: <Login /> },
+          { path: "/register", element: <Register /> },
+        ],
+      },
     ],
   },
   {

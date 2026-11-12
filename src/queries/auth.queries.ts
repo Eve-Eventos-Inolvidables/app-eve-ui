@@ -1,4 +1,4 @@
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { login, register } from "../api/auth.api";
 import { useAuthStore } from "../stores/auth.store";
 import type {
@@ -57,18 +57,28 @@ async function registerAndLogin(payload: RegisterRequest): Promise<AuthResult> {
 
 export function useLoginMutation() {
   const setAuth = useAuthStore((state) => state.setAuth);
+  const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: loginAndStore,
-    onSuccess: ({ user, token }) => setAuth(user, token),
+    onSuccess: ({ user, token }) => {
+      // Start every session with a clean cache to avoid leaking another
+      // user's data between logins.
+      queryClient.clear();
+      setAuth(user, token);
+    },
   });
 }
 
 export function useRegisterMutation() {
   const setAuth = useAuthStore((state) => state.setAuth);
+  const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: registerAndLogin,
-    onSuccess: ({ user, token }) => setAuth(user, token),
+    onSuccess: ({ user, token }) => {
+      queryClient.clear();
+      setAuth(user, token);
+    },
   });
 }

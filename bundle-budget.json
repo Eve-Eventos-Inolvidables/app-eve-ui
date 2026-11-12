@@ -1,0 +1,6 @@
+{
+  "entryGzip": 175000,
+  "routeChunkGzip": 42000,
+  "totalGzip": 315000,
+  "cssGzip": 10000
+}

@@ -2,6 +2,7 @@ import {
   keepPreviousData,
   useMutation,
   useQuery,
+  useQueryClient,
 } from "@tanstack/react-query";
 import { createEvent, getEvents } from "../api/events.api";
 import type { CreateEventRequest, SimpleEventDto } from "../types/event.types";
@@ -57,6 +58,8 @@ export function useAllEventsQuery(enabled = true) {
 }
 
 export function useCreateEventMutation() {
+  const queryClient = useQueryClient();
+
   return useMutation({
     mutationFn: async (payload: CreateEventRequest) => {
       const response = await createEvent(payload);
@@ -71,5 +74,6 @@ export function useCreateEventMutation() {
 
       return response;
     },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: eventKeys.all }),
   });
 }
