@@ -1,5 +1,5 @@
 import { Button } from "@chakra-ui/react";
-import { FiMoon, FiSun } from "react-icons/fi";
+import { Moon, Sun } from "lucide-react";
 import { useColorMode } from "../../hooks/useColorMode";
 
 export function ColorModeButton() {
@@ -14,7 +14,7 @@ export function ColorModeButton() {
       size="sm"
       variant="ghost"
     >
-      {isDark ? <FiSun /> : <FiMoon />}
+      {isDark ? <Sun /> : <Moon />}
       {/* {isDark ? "Claro" : "Oscuro"} */}
     </Button>
   );
