@@ -292,7 +292,6 @@ export default function UserManagement() {
           isFetching={usersQuery.isFetching}
           itemLabel="usuarios"
           onPageChange={setPageIndex}
-          pageIndex={pageIndex}
           pagination={pagination}
         />
       </Box>
