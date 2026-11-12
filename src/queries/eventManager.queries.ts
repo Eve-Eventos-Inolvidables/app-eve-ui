@@ -56,17 +56,6 @@ export function useGetEventManagersByManagerId(managerId: number) {
   });
 }
 
-export function useCreateEventManager() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (request: CreateEventManagerRequest) =>
-      eventManagerApi.createEventManager(request),
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: eventManagerKeys.all }),
-  });
-}
-
 export interface CreateEventManagerBatchResult {
   request: CreateEventManagerRequest;
   response?: ApiResponse<EventManager>;
