@@ -3,19 +3,19 @@ import {
   useMutation,
   useQuery,
 } from "@tanstack/react-query";
-import { createEvent, getEvents } from "../api/events.api";
-import type { CreateEventRequest, SimpleEventDto } from "../types/event.types";
+import { createEvent, getEventById, getEvents } from "../api/events.api";
+import type { CreateEventRequest } from "../types/event.types";
 import type { GetEventsRequest } from "../types/request";
-import type { ApiErrorResponse } from "../types/responses";
 
 export const eventKeys = {
   all: ["events"] as const,
   lists: () => [...eventKeys.all, "list"] as const,
   list: (params: GetEventsRequest) => [...eventKeys.lists(), params] as const,
-  allPages: () => [...eventKeys.all, "allPages"] as const,
+  details: () => [...eventKeys.all, "detail"] as const,
+  detail: (id: number) => [...eventKeys.details(), id] as const,
 };
 
-export function useEventsQuery(
+export function useGetEvents(
   params: GetEventsRequest = {},
   enabled = true,
 ) {
@@ -27,49 +27,16 @@ export function useEventsQuery(
   });
 }
 
-async function getAllEvents(): Promise<SimpleEventDto[]> {
-  const firstPage = await getEvents({ page: 0, size: 100 });
-  const pageCount = Math.max(firstPage.pagination?.totalPages ?? 1, 1);
-  const pageSize = firstPage.pagination?.size || 100;
-
-  if (pageCount === 1) {
-    return firstPage.data ?? [];
-  }
-
-  const remainingPages = await Promise.all(
-    Array.from({ length: pageCount - 1 }, (_, index) =>
-      getEvents({ page: index + 1, size: pageSize }),
-    ),
-  );
-
-  return [
-    ...(firstPage.data ?? []),
-    ...remainingPages.flatMap((response) => response.data ?? []),
-  ];
-}
-
-export function useAllEventsQuery(enabled = true) {
+export function useGetEventById(id: number) {
   return useQuery({
-    queryKey: eventKeys.allPages(),
-    queryFn: getAllEvents,
-    enabled,
+    queryKey: eventKeys.detail(id),
+    queryFn: () => getEventById(id),
+    enabled: Number.isInteger(id) && id > 0,
   });
 }
 
-export function useCreateEventMutation() {
+export function useCreateEvent() {
   return useMutation({
-    mutationFn: async (payload: CreateEventRequest) => {
-      const response = await createEvent(payload);
-
-      if (!response.success) {
-        throw new Error(
-          (response as ApiErrorResponse).data?.message ||
-            response.message ||
-            "No se pudo crear el evento.",
-        );
-      }
-
-      return response;
-    },
+    mutationFn: (payload: CreateEventRequest) => createEvent(payload),
   });
 }

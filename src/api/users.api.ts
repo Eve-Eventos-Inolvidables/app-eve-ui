@@ -12,8 +12,13 @@ export interface CreateUserRequest {
     email:    string;
     password: string;
 }
+
+export interface SearchUsersRequest extends PagedRequestByName {
+    roleId?: number;
+}
+
 export const usersApi = {
-    getUsers: (params:PagedRequestByName) => apiClient.get<ApiPagedResponse<UserDto[]>>(AUTH_URL+"/api/users", { params }).then(res => res.data),
+    getUsers: (params: SearchUsersRequest) => apiClient.get<ApiPagedResponse<UserDto[]>>(AUTH_URL+"/api/users", { params }).then(res => res.data),
     createUser: (request: CreateUserRequest) => apiClient.post<ApiResponse<UserDto>>(AUTH_URL+"/api/users", request).then(res => res.data),
     getUserById: (id: number) => apiClient.get<ApiResponse<UserDto>>(AUTH_URL+`/api/users/${id}`).then(res => res.data),
     updateUser: (id: number, body: Partial<CreateUserRequest>) => apiClient.patch<ApiResponse<UserDto>>(AUTH_URL+`/api/users/${id}`, body).then(res => res.data),

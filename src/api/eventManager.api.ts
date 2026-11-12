@@ -19,4 +19,6 @@ export const eventManagerApi = {
     createEventManager: (request: CreateEventManagerRequest) => apiClient.post<ApiResponse<EventManager>>(MANAGER_URL + "/api/managers", request).then(res => res.data),
     getEventManagerById: (id: number) => apiClient.get<ApiResponse<EventManager>>(MANAGER_URL + `/api/managers/${id}`).then(res => res.data),
     delete: (id: number) => apiClient.delete(MANAGER_URL + `/api/managers/${id}`).then(res => res.data),
+    getManagersByEventId: (eventId: number) => apiClient.get<ApiResponse<EventManager[]>>(MANAGER_URL + `/api/managers/by-event/${eventId}`).then(res => res.data),    
+    getManagersByManagerId: (managerId: number) => apiClient.get<ApiResponse<EventManager[]>>(MANAGER_URL + `/api/managers/by-manager/${managerId}`).then(res => res.data),
 }

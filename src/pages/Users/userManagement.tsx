@@ -12,13 +12,13 @@ import {
   Text,
 } from "@chakra-ui/react";
 import { Users } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { Role } from "../../api/users.api";
 import { toaster } from "../../components/ui/chakra-base/toaster-instance";
 import {
-  useAllUsersQuery,
-  useRolesQuery,
-  useUpdateUserMutation,
+  useGetRoles,
+  useGetUsers,
+  useUpdateUser,
 } from "../../queries/users.queries";
 import type { UserDto } from "../../types/auth.types";
 import { getErrorMessage } from "../../utils/error";
@@ -38,30 +38,35 @@ function getCurrentRole(user: UserDto, roles: Role[]): Role | undefined {
 
 export default function UserManagement() {
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [pageIndex, setPageIndex] = useState(0);
   const [selectedRoleByUser, setSelectedRoleByUser] = useState<
     Record<number, string>
   >({});
 
-  const usersQuery = useAllUsersQuery();
-  const rolesQuery = useRolesQuery();
-  const updateUserMutation = useUpdateUserMutation();
+  const usersQuery = useGetUsers({
+    page: pageIndex,
+    size: PAGE_SIZE,
+    name: debouncedSearch || undefined,
+  });
+  const rolesQuery = useGetRoles();
+  const updateUserMutation = useUpdateUser();
 
-  const users = usersQuery.data ?? [];
+  const users = usersQuery.data?.data ?? [];
+  const pagination = usersQuery.data?.pagination;
+  const totalPages = pagination?.totalPages ?? 0;
+  const totalItems = pagination?.totalItems ?? 0;
+  const currentPage = totalPages > 0 ? Math.min(pageIndex + 1, totalPages) : 1;
   const roles = rolesQuery.data?.data ?? [];
   const activeRoles = roles.filter((role) => !role.archived);
-  const normalizedSearch = search.trim().toLocaleLowerCase();
-  const filteredUsers = users.filter((user) =>
-    `${user.name} ${user.email} ${user.roleName}`
-      .toLocaleLowerCase()
-      .includes(normalizedSearch),
-  );
-  const totalPages = Math.ceil(filteredUsers.length / PAGE_SIZE);
-  const currentPage = totalPages > 0 ? Math.min(pageIndex + 1, totalPages) : 1;
-  const pageUsers = filteredUsers.slice(
-    pageIndex * PAGE_SIZE,
-    (pageIndex + 1) * PAGE_SIZE,
-  );
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      setDebouncedSearch(search.trim());
+    }, 350);
+
+    return () => window.clearTimeout(timeout);
+  }, [search]);
 
   const handleRoleChange = (userId: number, roleId: string) => {
     setSelectedRoleByUser((current) => ({ ...current, [userId]: roleId }));
@@ -78,7 +83,18 @@ export default function UserManagement() {
     updateUserMutation.mutate(
       { id: user.id, body: { roleId } },
       {
-        onSuccess: () => {
+        onSuccess: (response) => {
+          if (!response.success) {
+            toaster.create({
+              title: "No se pudo actualizar el rol",
+              description:
+                response.message ??
+                "Ocurrió un error al cambiar el rol del usuario.",
+              type: "error",
+            });
+            return;
+          }
+
           setSelectedRoleByUser((current) => ({
             ...current,
             [user.id]: String(role.id),
@@ -120,7 +136,7 @@ export default function UserManagement() {
           </Text>
         </Box>
         <Badge colorPalette="brand" px="3" py="2" variant="subtle">
-          <Users /> {users.length} usuarios
+          <Users /> {totalItems} usuarios
         </Badge>
       </Flex>
 
@@ -139,7 +155,7 @@ export default function UserManagement() {
                 setSearch(event.target.value);
                 setPageIndex(0);
               }}
-              placeholder="Buscar por nombre, correo o rol"
+              placeholder="Buscar por nombre"
               value={search}
             />
           </Field.Root>
@@ -180,14 +196,14 @@ export default function UserManagement() {
                     )}
                   </Table.Cell>
                 </Table.Row>
-              ) : filteredUsers.length === 0 ? (
+              ) : users.length === 0 ? (
                 <Table.Row>
                   <Table.Cell colSpan={5} color="fg.muted" textAlign="center">
                     No se encontraron usuarios.
                   </Table.Cell>
                 </Table.Row>
               ) : (
-                pageUsers.map((user) => {
+                users.map((user) => {
                   const currentRole = getCurrentRole(user, roles);
                   const currentRoleId = currentRole
                     ? String(currentRole.id)
@@ -265,7 +281,7 @@ export default function UserManagement() {
 
         {!usersQuery.isPending &&
           !usersQuery.isError &&
-          filteredUsers.length > 0 && (
+          users.length > 0 && (
             <Flex
               align="center"
               borderTopColor="border"
@@ -276,11 +292,12 @@ export default function UserManagement() {
               py="3"
             >
               <Text color="fg.muted" fontSize="sm">
-                Página {currentPage} de {totalPages} · {filteredUsers.length} usuarios
+                Página {currentPage} de {Math.max(totalPages, 1)} · {totalItems}{" "}
+                usuarios
               </Text>
               <Flex gap="2">
                 <Button
-                  disabled={pageIndex <= 0}
+                  disabled={pageIndex <= 0 || usersQuery.isFetching}
                   onClick={() =>
                     setPageIndex((current) => Math.max(current - 1, 0))
                   }
@@ -290,7 +307,9 @@ export default function UserManagement() {
                   Anterior
                 </Button>
                 <Button
-                  disabled={currentPage >= totalPages}
+                  disabled={
+                    usersQuery.isFetching || currentPage >= totalPages
+                  }
                   onClick={() => setPageIndex((current) => current + 1)}
                   size="sm"
                   variant="outline"

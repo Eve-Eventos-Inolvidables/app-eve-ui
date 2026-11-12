@@ -17,7 +17,7 @@ import type { FormEvent } from "react";
 import { FiArrowLeft, FiArrowRight, FiCheck, FiPlus, FiTrash2 } from "react-icons/fi";
 import { useNavigate } from "react-router-dom";
 import { toaster } from "../../components/ui/chakra-base/toaster-instance";
-import { useCreateEventMutation } from "../../queries/events.queries";
+import { useCreateEvent } from "../../queries/events.queries";
 import type {
   BasicField,
   EventDraft,
@@ -45,7 +45,7 @@ const STEPS = [
 
 export default function EventCreate() {
   const navigate = useNavigate();
-  const createEventMutation = useCreateEventMutation();
+  const createEventMutation = useCreateEvent();
   const [step, setStep] = useState(0);
   const [form, setForm] = useState<EventDraft>(createInitialForm);
   const [errors, setErrors] = useState<FormErrors>({});
@@ -196,7 +196,17 @@ export default function EventCreate() {
     }
 
     createEventMutation.mutate(buildPayload(form), {
-      onSuccess: () => {
+      onSuccess: (response) => {
+        if (!response.success) {
+          toaster.create({
+            title: "No se pudo crear el evento",
+            description:
+              response.message ?? "No se pudo crear el evento.",
+            type: "error",
+          });
+          return;
+        }
+
         toaster.create({
           title: "Evento creado",
           description: "El evento se creó correctamente.",
