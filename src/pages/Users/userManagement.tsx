@@ -8,13 +8,20 @@ import {
   Input,
   NativeSelect,
   Stack,
-  Table,
   Text,
 } from "@chakra-ui/react";
 import { Users } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import type { Role } from "../../api/users.api";
+import {
+  DataTable,
+  type DataTableColumn,
+} from "../../components/ui/DataTable";
+import { EmptyState } from "../../components/ui/EmptyState";
+import { PaginationControl } from "../../components/ui/PaginationControl";
 import { toaster } from "../../components/ui/chakra-base/toaster-instance";
+import { USER_PAGE_SIZE } from "../../constants/pagination";
+import { useDebouncedValue } from "../../hooks/useDebouncedValue";
 import {
   useGetRoles,
   useGetUsers,
@@ -23,7 +30,12 @@ import {
 import type { UserDto } from "../../types/auth.types";
 import { getErrorMessage } from "../../utils/error";
 
-const PAGE_SIZE = 10;
+interface UserRow extends UserDto {
+  currentRole?: Role;
+  selectedRoleId: string;
+  roleOptions: Role[];
+  isUpdating: boolean;
+}
 
 function getCurrentRole(user: UserDto, roles: Role[]): Role | undefined {
   return (
@@ -38,7 +50,7 @@ function getCurrentRole(user: UserDto, roles: Role[]): Role | undefined {
 
 export default function UserManagement() {
   const [search, setSearch] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const debouncedSearch = useDebouncedValue(search.trim());
   const [pageIndex, setPageIndex] = useState(0);
   const [selectedRoleByUser, setSelectedRoleByUser] = useState<
     Record<number, string>
@@ -46,7 +58,7 @@ export default function UserManagement() {
 
   const usersQuery = useGetUsers({
     page: pageIndex,
-    size: PAGE_SIZE,
+    size: USER_PAGE_SIZE,
     name: debouncedSearch || undefined,
   });
   const rolesQuery = useGetRoles();
@@ -54,29 +66,38 @@ export default function UserManagement() {
 
   const users = usersQuery.data?.data ?? [];
   const pagination = usersQuery.data?.pagination;
-  const totalPages = pagination?.totalPages ?? 0;
   const totalItems = pagination?.totalItems ?? 0;
-  const currentPage = totalPages > 0 ? Math.min(pageIndex + 1, totalPages) : 1;
   const roles = rolesQuery.data?.data ?? [];
   const activeRoles = roles.filter((role) => !role.archived);
 
-  useEffect(() => {
-    const timeout = window.setTimeout(() => {
-      setDebouncedSearch(search.trim());
-    }, 350);
+  const rows: UserRow[] = users.map((user) => {
+    const currentRole = getCurrentRole(user, roles);
+    const currentRoleId = currentRole ? String(currentRole.id) : "";
+    const selectedRoleId = selectedRoleByUser[user.id] ?? currentRoleId;
+    const roleOptions = currentRole?.archived
+      ? [...activeRoles, currentRole]
+      : activeRoles;
 
-    return () => window.clearTimeout(timeout);
-  }, [search]);
+    return {
+      ...user,
+      currentRole,
+      selectedRoleId,
+      roleOptions,
+      isUpdating:
+        updateUserMutation.isPending &&
+        updateUserMutation.variables?.id === user.id,
+    };
+  });
 
   const handleRoleChange = (userId: number, roleId: string) => {
     setSelectedRoleByUser((current) => ({ ...current, [userId]: roleId }));
   };
 
-  const handleSaveRole = (user: UserDto, currentRole?: Role) => {
-    const roleId = Number(selectedRoleByUser[user.id]);
+  const handleSaveRole = (user: UserRow) => {
+    const roleId = Number(user.selectedRoleId);
     const role = activeRoles.find((item) => item.id === roleId);
 
-    if (!Number.isInteger(roleId) || !role || role.id === currentRole?.id) {
+    if (!Number.isInteger(roleId) || !role || role.id === user.currentRole?.id) {
       return;
     }
 
@@ -118,6 +139,85 @@ export default function UserManagement() {
       },
     );
   };
+
+  const columns: DataTableColumn<UserRow>[] = [
+    {
+      key: "name",
+      header: "Usuario",
+      render: (user) => <Text fontWeight="medium">{user.name}</Text>,
+    },
+    {
+      key: "email",
+      header: "Email",
+      render: (user) => <Text color="fg.muted">{user.email}</Text>,
+    },
+    {
+      key: "currentRole",
+      header: "Rol actual",
+      render: (user) => (
+        <Badge colorPalette="brand" variant="subtle">
+          {user.roleName || "Sin rol"}
+        </Badge>
+      ),
+    },
+    {
+      key: "role",
+      header: "Cambiar rol",
+      minWidth: "52",
+      render: (user) => (
+        <NativeSelect.Root
+          disabled={
+            rolesQuery.isPending ||
+            rolesQuery.isError ||
+            updateUserMutation.isPending
+          }
+        >
+          <NativeSelect.Field
+            aria-label={`Nuevo rol para ${user.name}`}
+            onChange={(event) =>
+              handleRoleChange(user.id, event.target.value)
+            }
+            value={user.selectedRoleId}
+          >
+            <option value="">Selecciona un rol</option>
+            {user.roleOptions.map((role) => (
+              <option
+                disabled={role.archived}
+                key={role.id}
+                value={role.id}
+              >
+                {role.name}
+                {role.archived ? " (archivado)" : ""}
+              </option>
+            ))}
+          </NativeSelect.Field>
+          <NativeSelect.Indicator />
+        </NativeSelect.Root>
+      ),
+    },
+    {
+      key: "action",
+      header: "Acción",
+      align: "end",
+      render: (user) => (
+        <Button
+          colorPalette="brand"
+          disabled={
+            !user.selectedRoleId ||
+            user.selectedRoleId ===
+              (user.currentRole ? String(user.currentRole.id) : "") ||
+            updateUserMutation.isPending ||
+            rolesQuery.isError
+          }
+          loading={user.isUpdating}
+          onClick={() => handleSaveRole(user)}
+          size="sm"
+        >
+          Guardar
+        </Button>
+      ),
+    },
+  ];
 
   return (
     <Stack gap="6">
@@ -169,156 +269,32 @@ export default function UserManagement() {
           )}
         </Box>
 
-        <Table.ScrollArea>
-          <Table.Root size="md" variant="line">
-            <Table.Header>
-              <Table.Row>
-                <Table.ColumnHeader>Usuario</Table.ColumnHeader>
-                <Table.ColumnHeader>Email</Table.ColumnHeader>
-                <Table.ColumnHeader>Rol actual</Table.ColumnHeader>
-                <Table.ColumnHeader>Cambiar rol</Table.ColumnHeader>
-                <Table.ColumnHeader textAlign="end">Acción</Table.ColumnHeader>
-              </Table.Row>
-            </Table.Header>
-            <Table.Body>
-              {usersQuery.isPending ? (
-                <Table.Row>
-                  <Table.Cell colSpan={5} color="fg.muted" textAlign="center">
-                    Cargando usuarios...
-                  </Table.Cell>
-                </Table.Row>
-              ) : usersQuery.isError ? (
-                <Table.Row>
-                  <Table.Cell colSpan={5} color="fg.muted" textAlign="center">
-                    {getErrorMessage(
-                      usersQuery.error,
-                      "No se pudieron cargar los usuarios.",
-                    )}
-                  </Table.Cell>
-                </Table.Row>
-              ) : users.length === 0 ? (
-                <Table.Row>
-                  <Table.Cell colSpan={5} color="fg.muted" textAlign="center">
-                    No se encontraron usuarios.
-                  </Table.Cell>
-                </Table.Row>
-              ) : (
-                users.map((user) => {
-                  const currentRole = getCurrentRole(user, roles);
-                  const currentRoleId = currentRole
-                    ? String(currentRole.id)
-                    : "";
-                  const selectedRoleId =
-                    selectedRoleByUser[user.id] ?? currentRoleId;
-                  const roleOptions = currentRole?.archived
-                    ? [...activeRoles, currentRole]
-                    : activeRoles;
-                  const isUpdatingThisUser =
-                    updateUserMutation.isPending &&
-                    updateUserMutation.variables?.id === user.id;
+        <DataTable
+          bordered={false}
+          columns={columns}
+          emptyState={<EmptyState title="No se encontraron usuarios" />}
+          errorMessage={
+            usersQuery.isError
+              ? getErrorMessage(
+                  usersQuery.error,
+                  "No se pudieron cargar los usuarios.",
+                )
+              : undefined
+          }
+          isLoading={usersQuery.isPending}
+          loadingMessage="Cargando usuarios..."
+          onRetry={() => void usersQuery.refetch()}
+          rows={rows}
+          size="md"
+        />
 
-                  return (
-                    <Table.Row key={user.id}>
-                      <Table.Cell fontWeight="medium">{user.name}</Table.Cell>
-                      <Table.Cell color="fg.muted">{user.email}</Table.Cell>
-                      <Table.Cell>
-                        <Badge colorPalette="brand" variant="subtle">
-                          {user.roleName || "Sin rol"}
-                        </Badge>
-                      </Table.Cell>
-                      <Table.Cell minW="52">
-                        <NativeSelect.Root
-                          disabled={
-                            rolesQuery.isPending ||
-                            rolesQuery.isError ||
-                            updateUserMutation.isPending
-                          }
-                        >
-                          <NativeSelect.Field
-                            aria-label={`Nuevo rol para ${user.name}`}
-                            onChange={(event) =>
-                              handleRoleChange(user.id, event.target.value)
-                            }
-                            value={selectedRoleId}
-                          >
-                            <option value="">Selecciona un rol</option>
-                            {roleOptions.map((role) => (
-                              <option
-                                disabled={role.archived}
-                                key={role.id}
-                                value={role.id}
-                              >
-                                {role.name}{role.archived ? " (archivado)" : ""}
-                              </option>
-                            ))}
-                          </NativeSelect.Field>
-                          <NativeSelect.Indicator />
-                        </NativeSelect.Root>
-                      </Table.Cell>
-                      <Table.Cell textAlign="end">
-                        <Button
-                          colorPalette="brand"
-                          disabled={
-                            !selectedRoleId ||
-                            selectedRoleId === currentRoleId ||
-                            updateUserMutation.isPending ||
-                            rolesQuery.isError
-                          }
-                          loading={isUpdatingThisUser}
-                          onClick={() => handleSaveRole(user, currentRole)}
-                          size="sm"
-                        >
-                          Guardar
-                        </Button>
-                      </Table.Cell>
-                    </Table.Row>
-                  );
-                })
-              )}
-            </Table.Body>
-          </Table.Root>
-        </Table.ScrollArea>
-
-        {!usersQuery.isPending &&
-          !usersQuery.isError &&
-          users.length > 0 && (
-            <Flex
-              align="center"
-              borderTopColor="border"
-              borderTopWidth="1px"
-              gap="3"
-              justify="space-between"
-              px="4"
-              py="3"
-            >
-              <Text color="fg.muted" fontSize="sm">
-                Página {currentPage} de {Math.max(totalPages, 1)} · {totalItems}{" "}
-                usuarios
-              </Text>
-              <Flex gap="2">
-                <Button
-                  disabled={pageIndex <= 0 || usersQuery.isFetching}
-                  onClick={() =>
-                    setPageIndex((current) => Math.max(current - 1, 0))
-                  }
-                  size="sm"
-                  variant="outline"
-                >
-                  Anterior
-                </Button>
-                <Button
-                  disabled={
-                    usersQuery.isFetching || currentPage >= totalPages
-                  }
-                  onClick={() => setPageIndex((current) => current + 1)}
-                  size="sm"
-                  variant="outline"
-                >
-                  Siguiente
-                </Button>
-              </Flex>
-            </Flex>
-          )}
+        <PaginationControl
+          isFetching={usersQuery.isFetching}
+          itemLabel="usuarios"
+          onPageChange={setPageIndex}
+          pageIndex={pageIndex}
+          pagination={pagination}
+        />
       </Box>
     </Stack>
   );

@@ -4,6 +4,7 @@ import { AuthLayout } from "../layouts/AuthLayout";
 import { ProtectedRoute } from "./guard/ProtectedRoute";
 import { PublicRoute } from "./guard/PublicRoute";
 import { RequirePermission } from "./guard/RequirePermission";
+import NotFound from "../pages/notFound";
 import {
   Dashboard,
   EventCreate,
@@ -50,5 +51,5 @@ export const router = createBrowserRouter([
       },
     ],
   },
-  { path: "*", element: <Navigate to="/login" replace /> },
+  { path: "*", element: <NotFound /> },
 ]);

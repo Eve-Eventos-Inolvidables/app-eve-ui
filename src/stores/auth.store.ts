@@ -5,7 +5,6 @@ import type { UserDto } from "../types/auth.types";
 interface AuthState {
   user: UserDto | null;
   token: string | null;
-  isAdmin: boolean;
 
   setAuth: (user: UserDto, token: string) => void;
   clearAuth: () => void;
@@ -16,18 +15,13 @@ export const useAuthStore = create<AuthState>()(
     (set) => ({
       user: null,
       token: null,
-      isAdmin: false,
 
-      setAuth: (user, token) =>
-        set({
-          user,
-          token,
-          isAdmin: ["admin", "administrador"].includes(
-            (user.roleName ?? "").trim().toLowerCase(),
-          ),
-        }),
-      clearAuth: () => set({ user: null, token: null, isAdmin: false }),
+      setAuth: (user, token) => set({ user, token }),
+      clearAuth: () => set({ user: null, token: null }),
     }),
-    { name: "auth-storage" },
+    {
+      name: "auth-storage",
+      partialize: (state) => ({ user: state.user, token: state.token }),
+    },
   ),
 );

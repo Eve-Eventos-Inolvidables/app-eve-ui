@@ -14,14 +14,13 @@ import { RouteFallback } from "../components/ui/RouteFallback";
 import { ColorModeButton } from "../components/ui/ColorModeButton";
 import { toaster } from "../components/ui/chakra-base/toaster-instance";
 import { useAuthStore } from "../stores/auth.store";
+import { useIsAdmin } from "../utils/permissions";
 import { LogOut, Plus, Ticket, Users } from "lucide-react";
 export function AppLayout() {
   const user = useAuthStore((state) => state.user);
   const clearAuth = useAuthStore((state) => state.clearAuth);
   const navigate = useNavigate();
-  const isAdmin = ["admin", "administrador"].includes(
-    (user?.roleName ?? "").trim().toLowerCase(),
-  );
+  const isAdmin = useIsAdmin();
 
   const handleLogout = () => {
     clearAuth();

@@ -7,8 +7,10 @@ import {
 import {
   eventManagerApi,
   type CreateEventManagerRequest,
+  type EventManager,
 } from "../api/eventManager.api";
 import type { PagedRequest } from "../types/request";
+import type { ApiResponse } from "../types/responses";
 
 export const eventManagerKeys = {
   all: ["eventManagers"] as const,
@@ -61,6 +63,40 @@ export function useCreateEventManager() {
     mutationFn: (request: CreateEventManagerRequest) =>
       eventManagerApi.createEventManager(request),
     onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: eventManagerKeys.all }),
+  });
+}
+
+export interface CreateEventManagerBatchResult {
+  request: CreateEventManagerRequest;
+  response?: ApiResponse<EventManager>;
+  error?: unknown;
+}
+
+export function useCreateEventManagersBatch() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (
+      requests: CreateEventManagerRequest[],
+    ): Promise<CreateEventManagerBatchResult[]> => {
+      const settled = await Promise.allSettled(
+        requests.map((request) =>
+          eventManagerApi.createEventManager(request),
+        ),
+      );
+
+      return settled.map((result, index) => {
+        const request = requests[index];
+
+        if (result.status === "fulfilled") {
+          return { request, response: result.value };
+        }
+
+        return { request, error: result.reason };
+      });
+    },
+    onSettled: () =>
       queryClient.invalidateQueries({ queryKey: eventManagerKeys.all }),
   });
 }

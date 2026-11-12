@@ -18,7 +18,6 @@ import { BasicInfoStep } from "./steps/BasicInfoStep";
 import { PricingStep } from "./steps/PricingStep";
 import { StructureStep } from "./steps/StructureStep";
 import { collectGlobalErrors } from "./wizardErrors";
-import "../../styles/EventsCreate/event.css";
 import { useCreateEventMutation } from "../../queries/events.queries";
 
 const STEPS = [
@@ -190,8 +189,8 @@ export default function EventCreate() {
       <Box
         bg="bg.panel"
         borderColor="border"
+        borderRadius="xl"
         borderWidth="1px"
-        className="modal-content"
         color="fg"
         p={{ base: "4", md: "8" }}
         shadow="lg"

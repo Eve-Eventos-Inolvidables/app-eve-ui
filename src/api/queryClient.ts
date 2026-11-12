@@ -13,7 +13,8 @@ function handleQueryError(
   error: unknown,
   query: Query<unknown, unknown, unknown, readonly unknown[]>,
 ): void {
-  // 401s are handled by the axios interceptor (auth is cleared there).
+  // 401s are handled by the axios interceptor, which clears the session
+  // and the query cache.
   if (isUnauthorized(error)) {
     return;
   }

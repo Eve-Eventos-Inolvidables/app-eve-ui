@@ -1,6 +1,6 @@
 import { AUTH_URL } from "../constants/ms";
+import type { ApiResponse } from "../types/responses";
 import type {
-  ApiResponse,
   LoginRequest,
   LoginResponse,
   RegisterRequest,
