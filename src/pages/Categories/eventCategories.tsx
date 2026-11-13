@@ -83,7 +83,6 @@ export default function EventCategories() {
             <Table.Header>
               <Table.Row>
                 <Table.ColumnHeader>Nombre</Table.ColumnHeader>
-                <Table.ColumnHeader>Estado</Table.ColumnHeader>
                 <Table.ColumnHeader textAlign="end">Acciones</Table.ColumnHeader>
               </Table.Row>
             </Table.Header>
@@ -143,14 +142,6 @@ export default function EventCategories() {
                 categories.map((category) => (
                   <Table.Row key={category.id}>
                     <Table.Cell fontWeight="medium">{category.name}</Table.Cell>
-                    <Table.Cell>
-                      <Badge
-                        colorPalette={category.archived ? "gray" : "green"}
-                        variant="subtle"
-                      >
-                        {category.archived ? "Archivada" : "Activa"}
-                      </Badge>
-                    </Table.Cell>
                     <Table.Cell textAlign="end">
                       <Flex gap="2" justify="flex-end">
                         <Button
