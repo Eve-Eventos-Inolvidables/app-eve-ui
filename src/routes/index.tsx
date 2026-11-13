@@ -6,6 +6,7 @@ import { PublicRoute } from "./guard/PublicRoute";
 import { RequirePermission } from "./guard/RequirePermission";
 import {
   Dashboard,
+  EventCategories,
   EventCreate,
   EventManagers,
   Login,
@@ -42,6 +43,7 @@ export const router = createBrowserRouter([
             element: <RequirePermission />,
             children: [
               { path: "/managers", element: <EventManagers /> },
+              { path: "/categories", element: <EventCategories /> },
               { path: "/users", element: <UserManagement /> },
               { path: "/event/create", element: <EventCreate /> },
             ],

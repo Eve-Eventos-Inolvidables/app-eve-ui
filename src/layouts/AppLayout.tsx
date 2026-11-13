@@ -14,7 +14,7 @@ import { RouteFallback } from "../components/ui/RouteFallback";
 import { ColorModeButton } from "../components/ui/ColorModeButton";
 import { toaster } from "../components/ui/chakra-base/toaster-instance";
 import { useAuthStore } from "../stores/auth.store";
-import { LogOut, Plus, Ticket, Users } from "lucide-react";
+import { LogOut, Plus, Tags, Ticket, Users } from "lucide-react";
 export function AppLayout() {
   const user = useAuthStore((state) => state.user);
   const clearAuth = useAuthStore((state) => state.clearAuth);
@@ -100,6 +100,13 @@ export function AppLayout() {
                 variant="ghost"
               >
                 <Users /> Usuarios
+              </Button>
+              <Button
+                onClick={() => navigate("/categories")}
+                size="sm"
+                variant="ghost"
+              >
+                <Tags /> Categorías
               </Button>
               <Button
                 onClick={() => navigate("/managers")}

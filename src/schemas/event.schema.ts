@@ -59,7 +59,7 @@ const precioSchema = z.object({
 });
 
 const eventBasicFields = {
-  categoryId: positiveIntegerString("Ingresa un ID de categoría válido."),
+  categoryId: positiveIntegerString("Selecciona una categoría válida."),
   name: z.string().trim().min(1, "El nombre del evento es obligatorio."),
   visibleStart: z
     .string()

@@ -15,3 +15,5 @@ export interface GetEventsRequest extends PagedRequestByName {
   categoryId?: number;
   visibleStart?: string;
 }
+
+export type GetEventCategoriesRequest = PagedSortedRequest;
