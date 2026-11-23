@@ -60,7 +60,7 @@ export default function EventManagers() {
 
   const eventsQuery = useEventsQuery(
     {
-      page: eventPageIndex,
+      page: eventPageIndex + 1,
       size: EVENT_PAGE_SIZE,
       name: debouncedEventSearch || undefined,
     },

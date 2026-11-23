@@ -3,6 +3,8 @@ export interface PagedRequest {
   size?: number;
 }
 
+export type GetPagedItemsRequest = PagedRequest;
+
 export interface PagedSortedRequest extends PagedRequest {
   sort?: string;
 }

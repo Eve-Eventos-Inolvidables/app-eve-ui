@@ -11,6 +11,7 @@ import {
   type RegisterFormValues,
 } from "../schemas/auth.schema";
 import { getErrorMessage } from "../utils/error";
+import { getLandingPath } from "../utils/roleNavigation";
 
 export default function Register() {
   const navigate = useNavigate();
@@ -26,13 +27,13 @@ export default function Register() {
 
   const onSubmit = handleSubmit((values) => {
     registerMutation.mutate(values, {
-      onSuccess: () => {
+      onSuccess: ({ user }) => {
         toaster.create({
           title: "Cuenta creada",
           description: "Tu cuenta fue creada e iniciaste sesión",
           type: "success",
         });
-        navigate("/dash", { replace: true });
+        navigate(getLandingPath(user.roleName), { replace: true });
       },
       onError: (error) => {
         toaster.create({
