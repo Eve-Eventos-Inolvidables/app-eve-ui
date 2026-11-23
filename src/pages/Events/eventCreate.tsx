@@ -6,7 +6,6 @@ import type { FormEvent } from "react";
 import { FormProvider, useForm, type FieldPath } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
 import { toaster } from "../../components/ui/chakra-base/toaster-instance";
-import { useCreateEventMutation } from "../../queries/events.queries";
 import {
   eventBaseSchema,
   validateStep2,
@@ -19,7 +18,7 @@ import { BasicInfoStep } from "./steps/BasicInfoStep";
 import { PricingStep } from "./steps/PricingStep";
 import { StructureStep } from "./steps/StructureStep";
 import { collectGlobalErrors } from "./wizardErrors";
-import "../../styles/EventsCreate/event.css";
+import { useCreateEventMutation } from "../../queries/events.queries";
 
 const STEPS = [
   { title: "Datos básicos", description: "Información general del evento" },
@@ -190,8 +189,8 @@ export default function EventCreate() {
       <Box
         bg="bg.panel"
         borderColor="border"
+        borderRadius="xl"
         borderWidth="1px"
-        className="modal-content"
         color="fg"
         p={{ base: "4", md: "8" }}
         shadow="lg"

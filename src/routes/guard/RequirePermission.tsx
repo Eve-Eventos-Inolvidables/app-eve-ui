@@ -1,15 +1,8 @@
 import { Navigate, Outlet } from "react-router-dom";
-import { useAuthStore } from "../../stores/auth.store";
+import { useIsAdmin } from "../../utils/permissions";
 
 export const RequirePermission = () => {
-  const user = useAuthStore((state) => state.user);
+  const isAdmin = useIsAdmin();
 
-  if (!user) {
-    return <Navigate to="/login" replace />;
-  }
-
-  const roleName = user.roleName?.trim().toLowerCase() ?? "";
-  const hasPermission = roleName === "admin" || roleName === "administrador";
-
-  return hasPermission ? <Outlet /> : <Navigate to="/dash" replace />;
+  return isAdmin ? <Outlet /> : <Navigate to="/dash" replace />;
 };

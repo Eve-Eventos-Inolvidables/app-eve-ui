@@ -17,13 +17,13 @@ import { useAuthStore } from "../stores/auth.store";
 import { CalendarDays, LogOut, Plus, Tags, Ticket, Users } from "lucide-react";
 import { getLandingPath } from "../utils/roleNavigation";
 
+import { useIsAdmin } from "../utils/permissions";
+import { LogOut, Plus, Ticket, Users } from "lucide-react";
 export function AppLayout() {
   const user = useAuthStore((state) => state.user);
   const clearAuth = useAuthStore((state) => state.clearAuth);
   const navigate = useNavigate();
-  const isAdmin = ["admin", "administrador"].includes(
-    (user?.roleName ?? "").trim().toLowerCase(),
-  );
+  const isAdmin = useIsAdmin();
 
   const handleLogout = () => {
     clearAuth();

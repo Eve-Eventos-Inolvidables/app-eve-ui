@@ -5,6 +5,7 @@ import { ProtectedRoute } from "./guard/ProtectedRoute";
 import { PublicRoute } from "./guard/PublicRoute";
 import { RequirePermission } from "./guard/RequirePermission";
 import { RoleHomeRedirect } from "./guard/RoleHomeRedirect";
+import NotFound from "../pages/notFound";
 import {
   Dashboard,
   EventCategories,
@@ -57,5 +58,5 @@ export const router = createBrowserRouter([
       },
     ],
   },
-  { path: "*", element: <Navigate to="/login" replace /> },
+  { path: "*", element: <NotFound /> },
 ]);
