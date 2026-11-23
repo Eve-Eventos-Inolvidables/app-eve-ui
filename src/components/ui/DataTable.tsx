@@ -36,6 +36,7 @@ interface DataTableProps<T extends { id: number }> {
   bordered?: boolean;
   isRowActive?: (row: T) => boolean;
   isRowDisabled?: (row: T) => boolean;
+  isRowHighlighted?: (row: T) => boolean;
   onRowDoubleClick?: (row: T) => void;
 }
 
@@ -72,6 +73,7 @@ export function DataTable<T extends { id: number }>({
   bordered = true,
   isRowActive,
   isRowDisabled,
+  isRowHighlighted,
   onRowDoubleClick,
 }: DataTableProps<T>) {
   const resolvedErrorMessage =
@@ -146,23 +148,36 @@ export function DataTable<T extends { id: number }>({
             rows.map((row) => {
               const isActive = isRowActive?.(row) ?? false;
               const isDisabled = isRowDisabled?.(row) ?? false;
+              const isHighlighted = isRowHighlighted?.(row) ?? false;
 
               return (
                 <Table.Row
                   key={row.id}
                   aria-disabled={isDisabled || undefined}
-                  bg={isActive ? "brand.muted" : undefined}
+                  bg={
+                    isHighlighted
+                      ? "accent.subtle"
+                      : isActive
+                        ? "brand.muted"
+                        : undefined
+                  }
                   cursor={onRowDoubleClick && !isDisabled ? "pointer" : undefined}
                   onDoubleClick={
                     onRowDoubleClick && !isDisabled
                       ? () => onRowDoubleClick(row)
                       : undefined
                   }
-                  opacity={isDisabled ? 0.55 : 1}
+                  opacity={isDisabled && !isHighlighted ? 0.55 : 1}
                   _hover={
                     isDisabled
                       ? undefined
-                      : { bg: isActive ? "brand.muted" : "bg.subtle" }
+                      : {
+                          bg: isHighlighted
+                            ? "accent.subtle"
+                            : isActive
+                              ? "brand.muted"
+                              : "bg.subtle",
+                        }
                   }
                 >
                   {columns.map((column) => (

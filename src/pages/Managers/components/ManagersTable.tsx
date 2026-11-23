@@ -1,5 +1,4 @@
 import { Box, Button } from "@chakra-ui/react";
-import { Eye } from "lucide-react";
 import {
   DataTable,
   type DataTableColumn,
@@ -53,7 +52,7 @@ export function ManagersTable({
           size="sm"
           variant="outline"
         >
-          <Eye /> Detalles
+        Detalles
         </Button>
       ),
     },

@@ -1,6 +1,7 @@
 import {
   Box,
   Button,
+  Field,
   Flex,
   Heading,
   Stack,
@@ -8,6 +9,7 @@ import {
 } from "@chakra-ui/react";
 import { UserPlus } from "lucide-react";
 import { useState } from "react";
+import { SearchInput } from "../../components/ui/SearchInput";
 import { MANAGER_PAGE_SIZE } from "../../constants/pagination";
 import { MANAGER_ROLE_ID } from "../../constants/roles";
 import { useGetEventManagersByManagerId } from "../../queries/eventManager.queries";
@@ -23,11 +25,13 @@ export default function EventManagers() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [managerDetails, setManagerDetails] = useState<UserDto | null>(null);
   const [managerTablePageIndex, setManagerTablePageIndex] = useState(1);
+  const [managerNameFilter, setManagerNameFilter] = useState("");
 
   const managersQuery = useGetUsers({
     roleId: MANAGER_ROLE_ID,
     page: managerTablePageIndex,
     size: MANAGER_PAGE_SIZE,
+    name: managerNameFilter || undefined,
   });
   const managers = managersQuery.data?.data ?? [];
   const managersPagination = managersQuery.data?.pagination;
@@ -71,6 +75,11 @@ export default function EventManagers() {
     assignmentEvents.retry();
   };
 
+  const handleSearchChange = (value: string) => {
+    setManagerNameFilter(value);
+    setManagerTablePageIndex(1);
+  };
+
   return (
     <Stack gap="8">
       <Flex
@@ -96,17 +105,35 @@ export default function EventManagers() {
         </Button>
       </Flex>
 
-      <ManagersTable
-        errorMessage={managersErrorMessage}
-        isFetching={managersQuery.isFetching}
-        isLoading={managersQuery.isPending}
-        managers={managers}
-        onPageChange={setManagerTablePageIndex}
-        onRetry={() => void managersQuery.refetch()}
-        onViewDetails={setManagerDetails}
-        pageIndex={managerTablePageIndex}
-        pagination={managersPagination}
-      />
+      <Stack gap="4">
+        <Box
+          bg="bg.panel"
+          borderColor="border"
+          borderRadius="xl"
+          borderWidth="1px"
+          p="4"
+        >
+          <Field.Root>
+            <Field.Label>Buscar manager</Field.Label>
+            <SearchInput
+              onSearchChange={handleSearchChange}
+              placeholder="Buscar por nombre"
+            />
+          </Field.Root>
+        </Box>
+
+        <ManagersTable
+          errorMessage={managersErrorMessage}
+          isFetching={managersQuery.isFetching}
+          isLoading={managersQuery.isPending}
+          managers={managers}
+          onPageChange={setManagerTablePageIndex}
+          onRetry={() => void managersQuery.refetch()}
+          onViewDetails={setManagerDetails}
+          pageIndex={managerTablePageIndex}
+          pagination={managersPagination}
+        />
+      </Stack>
 
       <ManagerDetailsDialog
         assignments={assignments}

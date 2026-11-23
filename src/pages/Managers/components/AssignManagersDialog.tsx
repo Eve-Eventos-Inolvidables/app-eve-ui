@@ -1,17 +1,16 @@
 import {
-  Badge,
   Box,
   Button,
   Checkbox,
   Dialog,
   Field,
   Flex,
-  Input,
   Portal,
   Stack,
+  Steps,
   Text,
 } from "@chakra-ui/react";
-import { Check, UserPlus } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, UserPlus } from "lucide-react";
 import { useState } from "react";
 import type { UserDto } from "../../../types/auth.types";
 import type { SimpleEventDto } from "../../../types/event.types";
@@ -23,6 +22,7 @@ import { EmptyState } from "../../../components/ui/EmptyState";
 import { PaginationControl } from "../../../components/ui/PaginationControl";
 import { toaster } from "../../../components/ui/chakra-base/toaster-instance";
 import {
+  EVENT_MANAGER_ASSIGNMENTS_PAGE_SIZE,
   EVENT_PICKER_PAGE_SIZE,
   MANAGER_PICKER_PAGE_SIZE,
 } from "../../../constants/pagination";
@@ -36,6 +36,12 @@ import { useGetEvents } from "../../../queries/events.queries";
 import { useGetUsers } from "../../../queries/users.queries";
 import { getErrorMessage } from "../../../utils/error";
 import { formatDate } from "../../../utils/date";
+import { SearchInput } from "../../../components/ui/SearchInput";
+
+const STEPS = [
+  { title: "Evento", description: "Elige el evento a administrar" },
+  { title: "Event managers", description: "Selecciona los managers" },
+];
 
 interface AssignManagersDialogProps {
   open: boolean;
@@ -46,6 +52,7 @@ export function AssignManagersDialog({
   open,
   onOpenChange,
 }: AssignManagersDialogProps) {
+  const [step, setStep] = useState(0);
   const [eventSearch, setEventSearch] = useState("");
   const debouncedEventSearch = useDebouncedValue(eventSearch.trim());
   const [eventPageIndex, setEventPageIndex] = useState(0);
@@ -56,6 +63,8 @@ export function AssignManagersDialog({
   const debouncedUserSearch = useDebouncedValue(userSearch.trim());
   const [userPageIndex, setUserPageIndex] = useState(0);
   const [selectedManagers, setSelectedManagers] = useState<UserDto[]>([]);
+
+  const isManagerStep = open && step === 1 && selectedEvent !== null;
 
   const eventsQuery = useGetEvents(
     {
@@ -75,13 +84,15 @@ export function AssignManagersDialog({
       size: MANAGER_PICKER_PAGE_SIZE,
       name: debouncedUserSearch || undefined,
     },
-    open,
+    isManagerStep,
   );
   const dialogUsers = dialogUsersQuery.data?.data ?? [];
   const usersPagination = dialogUsersQuery.data?.pagination;
 
   const eventAssignmentsQuery = useGetEventManagersByEventId(
     selectedEvent?.id ?? 0,
+    { page:1, size: EVENT_MANAGER_ASSIGNMENTS_PAGE_SIZE },
+    isManagerStep,
   );
   const assignedManagerIds = new Set(
     (eventAssignmentsQuery.data?.data ?? []).map(
@@ -94,18 +105,19 @@ export function AssignManagersDialog({
 
   const eventsErrorMessage = eventsQuery.isError
     ? getErrorMessage(
-        eventsQuery.error,
-        "No se pudieron cargar los eventos.",
-      )
+      eventsQuery.error,
+      "No se pudieron cargar los eventos.",
+    )
     : undefined;
   const usersErrorMessage = dialogUsersQuery.isError
     ? getErrorMessage(
-        dialogUsersQuery.error,
-        "No se pudieron cargar los usuarios.",
-      )
+      dialogUsersQuery.error,
+      "No se pudieron cargar los usuarios.",
+    )
     : undefined;
 
   const resetState = () => {
+    setStep(0);
     setEventSearch("");
     setEventPageIndex(0);
     setSelectedEvent(null);
@@ -124,6 +136,35 @@ export function AssignManagersDialog({
     if (!details.open) {
       resetState();
     }
+  };
+
+  const handleStepChange = (details: { step: number }) => {
+    if (details.step === step || isAssigning) {
+      return;
+    }
+
+    if (details.step > step && !selectedEvent) {
+      toaster.create({
+        title: "Selecciona un evento",
+        description: "Elige un evento para continuar con la asignación.",
+        type: "warning",
+      });
+      return;
+    }
+
+    setStep(details.step);
+  };
+
+  const handleNext = () => {
+    if (!selectedEvent) {
+      return;
+    }
+
+    setStep(1);
+  };
+
+  const handleBack = () => {
+    setStep(0);
   };
 
   const handleEventSearchChange = (value: string) => {
@@ -220,8 +261,7 @@ export function AssignManagersDialog({
           .join("; ");
         const remainingFailures = failed.length - 3;
         descriptionParts.push(
-          `No se pudieron asignar: ${failedDetails}${
-            remainingFailures > 0 ? `; y ${remainingFailures} más` : ""
+          `No se pudieron asignar: ${failedDetails}${remainingFailures > 0 ? `; y ${remainingFailures} más` : ""
           }.`,
         );
       }
@@ -290,7 +330,7 @@ export function AssignManagersDialog({
           >
             {isSelected ? (
               <>
-                <Check /> Quitar selección
+                <Check /> Seleccionado
               </>
             ) : (
               "Seleccionar"
@@ -312,15 +352,7 @@ export function AssignManagersDialog({
       header: "Email",
       render: (user) => <Text color="fg.muted">{user.email}</Text>,
     },
-    {
-      key: "role",
-      header: "Rol",
-      render: (user) => (
-        <Badge colorPalette="brand" variant="subtle">
-          {user.roleName || "Sin rol"}
-        </Badge>
-      ),
-    },
+  
     {
       key: "select",
       header: "Seleccionar",
@@ -331,8 +363,8 @@ export function AssignManagersDialog({
           checked={selectedManagers.some(
             (selected) => selected.id === user.id,
           )}
+          colorPalette="brand"
           disabled={
-            !selectedEvent ||
             isAssigning ||
             assignedManagerIds.has(user.id) ||
             eventAssignmentsQuery.isPending
@@ -360,188 +392,219 @@ export function AssignManagersDialog({
         <Dialog.Backdrop />
         <Dialog.Positioner>
           <Dialog.Content maxH="90vh" maxW="4xl" overflowY="auto">
-            <Dialog.Header>
-              <Dialog.Title>Asignar event managers</Dialog.Title>
+            <Dialog.Header display="flex" flexDirection="row" gap="1">
+              <Dialog.Title>
+                Asignar Event Managers{selectedEvent ? " a" : ""}
+              </Dialog.Title>
+              {selectedEvent && (
+                <Dialog.Title color="brand.fg">
+                  {selectedEvent.name}
+                </Dialog.Title>
+              )}
             </Dialog.Header>
 
             <Dialog.Body>
               <Stack gap="5">
-                <Dialog.Description color="fg.muted">
-                  Selecciona el evento y luego el usuario que será su manager.
-                </Dialog.Description>
 
-                <Box
-                  bg="bg.panel"
-                  borderColor="border"
-                  borderRadius="xl"
-                  borderWidth="1px"
-                  overflow="hidden"
+                <Steps.Root
+                  colorPalette="brand"
+                  count={STEPS.length}
+                  linear={false}
+                  onStepChange={handleStepChange}
+                  step={step}
                 >
-                  <Box
-                    borderBottomColor="border"
-                    borderBottomWidth="1px"
-                    p="4"
-                  >
-                    <Box mb="3">
-                      <Text fontWeight="semibold">
-                        1. Selecciona un evento
-                      </Text>
-                      <Text color="fg.muted" fontSize="sm">
-                        Busca por nombre y elige el evento a administrar.
-                      </Text>
-                    </Box>
-                    <Field.Root>
-                      <Field.Label>Buscar evento</Field.Label>
-                      <Input
-                        onChange={(event) =>
-                          handleEventSearchChange(event.target.value)
-                        }
-                        placeholder="Buscar evento por nombre"
-                        value={eventSearch}
-                      />
-                    </Field.Root>
-                  </Box>
+                  <Steps.List mb="6">
+                    {STEPS.map((item, index) => (
+                      <Steps.Item
+                        key={item.title}
+                        index={index}
+                        title={item.title}
+                      >
+                        <Steps.Indicator>
+                          <Steps.Status
+                            complete={<Check />}
+                            incomplete={<Steps.Number />}
+                          />
+                        </Steps.Indicator>
+                        <Box>
+                          <Steps.Title>{item.title}</Steps.Title>
+                          <Steps.Description>
+                            {item.description}
+                          </Steps.Description>
+                        </Box>
+                        <Steps.Separator />
+                      </Steps.Item>
+                    ))}
+                  </Steps.List>
 
-                  <DataTable
-                    bordered={false}
-                    columns={eventColumns}
-                    emptyState={
-                      <EmptyState title="No se encontraron eventos" />
-                    }
-                    errorMessage={eventsErrorMessage}
-                    isRowActive={(event) =>
-                      selectedEvent?.id === event.id
-                    }
-                    isLoading={eventsQuery.isPending}
-                    loadingMessage="Cargando eventos..."
-                    maxHeight="xs"
-                    onRetry={() => void eventsQuery.refetch()}
-                    rows={events}
-                    size="sm"
-                  />
-
-                  <PaginationControl
-                    isFetching={eventsQuery.isFetching}
-                    itemLabel="eventos"
-                    onPageChange={setEventPageIndex}
-                    pagination={eventsPagination}
-                  />
-                </Box>
-
-                {selectedEvent && (
-                  <Box
-                    bg="bg.panel"
-                    borderColor="border"
-                    borderRadius="xl"
-                    borderWidth="1px"
-                    p="4"
-                  >
-                    <Flex align="center" gap="3" justify="space-between">
-                      <Box>
-                        <Text
-                          color="fg.muted"
-                          fontSize="xs"
-                          fontWeight="semibold"
-                          textTransform="uppercase"
-                        >
-                          Evento seleccionado
-                        </Text>
-                        <Text color="fg" fontWeight="medium">
-                          {selectedEvent.name}
-                        </Text>
-                        <Text color="fg.muted" fontSize="sm">
-                          {formatDate(selectedEvent.date)} ·{" "}
-                          {selectedEvent.kickOffTime}
-                        </Text>
-                      </Box>
-                      <Badge colorPalette="brand" variant="subtle">
-                        Seleccionado
-                      </Badge>
-                    </Flex>
-                  </Box>
-                )}
-
-                <Box borderTopColor="border" borderTopWidth="1px" pt="5">
-                  <Stack gap="3">
-                    <Box>
-                      <Text fontWeight="semibold">
-                        2. Selecciona un usuario
-                      </Text>
-                      <Text color="fg.muted" fontSize="sm" mb="3">
-                        Marca uno o más managers para el evento seleccionado.
-                        Los managers ya asignados aparecen deshabilitados.
-                      </Text>
+                  <Steps.Content index={0}>
+                    <Stack gap="4">
                       <Field.Root>
-                        <Field.Label>Buscar manager</Field.Label>
-                        <Input
-                          onChange={(event) =>
-                            handleUserSearchChange(event.target.value)
-                          }
+                        <Field.Label>Buscar evento</Field.Label>
+                        <SearchInput
+                          onSearchChange={handleEventSearchChange}
                           placeholder="Buscar por nombre"
-                          value={userSearch}
                         />
                       </Field.Root>
-                    </Box>
 
-                    <Box
-                      bg="bg.panel"
-                      borderColor="border"
-                      borderRadius="xl"
-                      borderWidth="1px"
-                      overflow="hidden"
-                    >
-                      <DataTable
-                        bordered={false}
-                        columns={userColumns}
-                        emptyState={
-                          <EmptyState title="No se encontraron managers" />
-                        }
-                        errorMessage={usersErrorMessage}
-                        isLoading={dialogUsersQuery.isPending}
-                        isRowDisabled={(user) =>
-                          assignedManagerIds.has(user.id)
-                        }
-                        loadingMessage="Cargando managers..."
-                        maxHeight="sm"
-                        onRetry={() => void dialogUsersQuery.refetch()}
-                        rows={dialogUsers}
-                        size="sm"
-                      />
+                      <Box
+                        bg="bg.panel"
+                        borderColor="border"
+                        borderRadius="xl"
+                        borderWidth="1px"
+                        overflow="hidden"
+                      >
+                        <DataTable
+                          bordered={false}
+                          columns={eventColumns}
+                          emptyState={
+                            <EmptyState title="No se encontraron eventos" />
+                          }
+                          errorMessage={eventsErrorMessage}
+                          isRowActive={(event) =>
+                            selectedEvent?.id === event.id
+                          }
+                          isLoading={eventsQuery.isPending}
+                          loadingMessage="Cargando eventos..."
+                          maxHeight="xs"
+                          onRetry={() => void eventsQuery.refetch()}
+                          rows={events}
+                          size="sm"
+                        />
 
-                      <PaginationControl
-                        isFetching={dialogUsersQuery.isFetching}
-                        itemLabel="managers"
-                        onPageChange={setUserPageIndex}
-                        pagination={usersPagination}
-                      />
-                    </Box>
-                  </Stack>
-                </Box>
+                        <PaginationControl
+                          isFetching={eventsQuery.isFetching}
+                          itemLabel="eventos"
+                          onPageChange={setEventPageIndex}
+                          pagination={eventsPagination}
+                        />
+                      </Box>
+                    </Stack>
+                  </Steps.Content>
+
+                  <Steps.Content index={1}>
+                    <Stack gap="4">
+
+                      <Field.Root>
+                        <Field.Label>Buscar manager</Field.Label>
+                        <SearchInput
+                          onSearchChange={handleUserSearchChange}
+                          placeholder="Buscar manager por nombre"
+                        />
+                      </Field.Root>
+                        
+
+                      <Box
+                        bg="bg.panel"
+                        borderColor="border"
+                        borderRadius="xl"
+                        borderWidth="1px"
+                        overflow="hidden"
+                      >
+                        <DataTable
+                          bordered={false}
+                          columns={userColumns}
+                          emptyState={
+                            <EmptyState title="No se encontraron managers" />
+                          }
+                          errorMessage={usersErrorMessage}
+                          isRowDisabled={(user) =>
+                            assignedManagerIds.has(user.id)
+                          }
+                          isRowHighlighted={(user) =>
+                            assignedManagerIds.has(user.id)
+                          }
+                          isLoading={dialogUsersQuery.isPending}
+                          loadingMessage="Cargando managers..."
+                          maxHeight="sm"
+                          onRetry={() => void dialogUsersQuery.refetch()}
+                          rows={dialogUsers}
+                          size="sm"
+                        />
+
+                        <PaginationControl
+                          isFetching={dialogUsersQuery.isFetching}
+                          itemLabel="managers"
+                          onPageChange={setUserPageIndex}
+                          pagination={usersPagination}
+                        />
+                      </Box>
+
+                      <Flex
+                        align="center"
+                        bg="bg.panel"
+                        borderColor="border"
+                        borderRadius="lg"
+                        borderWidth="1px"
+                        gap="3"
+                        px="3"
+                        py="2"
+                      >
+                        <Box
+                          bg="accent.subtle"
+                          borderColor="accent.muted"
+                          borderRadius="sm"
+                          borderWidth="1px"
+                          boxSize="5"
+                          flexShrink={0}
+                        />
+                        <Text color="fg.muted" fontSize="sm">
+                          Los managers resaltados ya están asignados a este
+                          evento.
+                        </Text>
+                      </Flex>
+                    </Stack>
+                  </Steps.Content>
+                </Steps.Root>
               </Stack>
             </Dialog.Body>
 
             <Dialog.Footer>
-              <Button
-                disabled={isAssigning}
-                onClick={() => handleOpenChange({ open: false })}
-                variant="outline"
-              >
-                Cancelar
-              </Button>
-              <Button
-                colorPalette="brand"
-                disabled={
-                  !selectedEvent ||
-                  selectedManagers.length === 0 ||
-                  isAssigning
-                }
-                loading={isAssigning}
-                onClick={() => void handleAssignSelected()}
-              >
-                <UserPlus /> Asignar {selectedManagers.length}{" "}
-                {selectedManagers.length === 1 ? "manager" : "managers"} y
-                cerrar
-              </Button>
+              <Flex align="center" gap="2" justify="space-between" w="100%">
+                <Flex gap="2">
+                  {step > 0 && (
+                    <Button
+                      disabled={isAssigning}
+                      onClick={handleBack}
+                      variant="outline"
+                    >
+                      <ArrowLeft /> Anterior
+                    </Button>
+                  )}
+                  <Button
+                    disabled={isAssigning}
+                    onClick={() => handleOpenChange({ open: false })}
+                    variant="outline"
+                  >
+                    Cancelar
+                  </Button>
+                </Flex>
+
+                {step === 0 ? (
+                  <Button
+                    colorPalette="brand"
+                    disabled={!selectedEvent || isAssigning}
+                    onClick={handleNext}
+                  >
+                    Siguiente <ArrowRight />
+                  </Button>
+                ) : (
+                  <Button
+                    colorPalette="brand"
+                    disabled={
+                      !selectedEvent ||
+                      selectedManagers.length === 0 ||
+                      isAssigning
+                    }
+                    loading={isAssigning}
+                    onClick={() => void handleAssignSelected()}
+                  >
+                    <UserPlus /> Asignar {selectedManagers.length}{" "}
+                    {selectedManagers.length === 1 ? "manager" : "managers"} y
+                    cerrar
+                  </Button>
+                )}
+              </Flex>
             </Dialog.Footer>
 
             <Dialog.CloseTrigger disabled={isAssigning} />
