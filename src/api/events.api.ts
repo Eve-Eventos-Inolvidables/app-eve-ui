@@ -28,7 +28,7 @@ export async function getEventById(
   id: number,
 ): Promise<ApiResponse<SimpleEventDto>> {
   const { data } = await apiClient.get<ApiResponse<SimpleEventDto>>(
-    EVENT_URL + `/api/sevent/${id}`,
+    `${EVENT_URL}/api/sevent/${id}`,
   );
   return data;
 }

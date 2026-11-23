@@ -1,3 +1,5 @@
+import type { BaseEntity } from "./entity";
+
 export interface SectorDraft {
   eventId: 0;
   name: string;
@@ -90,4 +92,36 @@ export interface SimpleEventDto {
   primaryColor: string;
   secondaryColor: string;
   mapsLink?: string | null;
+}
+
+export interface SectorDto extends BaseEntity {
+  eventId: number;
+  name: string;
+  capacity: number;
+}
+
+export interface BatchDto extends BaseEntity {
+  eventId: number;
+  name: string;
+  startDate: string;
+  endDate: string;
+}
+
+export interface SectorByBatchDto extends BaseEntity {
+  sectorId: number;
+  batchId: number;
+  price: number;
+  quantity: number;
+}
+
+export interface EventCategoryDto extends BaseEntity {
+  name: string;
+}
+
+export interface CreateEventCategoryRequest {
+  name: string;
+}
+
+export interface UpdateEventCategoryDto {
+  name?: string;
 }

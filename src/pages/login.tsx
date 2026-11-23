@@ -11,6 +11,7 @@ import {
   type LoginFormValues,
 } from "../schemas/auth.schema";
 import { getErrorMessage } from "../utils/error";
+import { getLandingPath } from "../utils/roleNavigation";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -26,13 +27,13 @@ export default function Login() {
 
   const onSubmit = handleSubmit((values) => {
     loginMutation.mutate(values, {
-      onSuccess: () => {
+      onSuccess: ({ user }) => {
         toaster.create({
           title: "Sesión iniciada",
           description: "Bienvenido de vuelta a EVE",
           type: "success",
         });
-        navigate("/dash", { replace: true });
+        navigate(getLandingPath(user.roleName), { replace: true });
       },
       onError: (error) => {
         toaster.create({

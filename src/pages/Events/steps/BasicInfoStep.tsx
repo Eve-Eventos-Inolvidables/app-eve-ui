@@ -1,27 +1,114 @@
-import { Field, Input, SimpleGrid, Textarea } from "@chakra-ui/react";
+import {
+  Button,
+  Field,
+  Flex,
+  Input,
+  NativeSelect,
+  SimpleGrid,
+  Spinner,
+  Text,
+  Textarea,
+} from "@chakra-ui/react";
+import { Plus } from "lucide-react";
+import { useState } from "react";
 import { useFormContext } from "react-hook-form";
+import { CreateCategoryDialog } from "../../../components/categories/CreateCategoryDialog";
+import { useAllEventCategoriesQuery } from "../../../queries/eventCategory.queries";
 import type { EventDraft } from "../../../types/event.types";
+import { getErrorMessage } from "../../../utils/error";
 
 export function BasicInfoStep() {
   const {
     register,
+    setValue,
     formState: { errors },
   } = useFormContext<EventDraft>();
+  const categoriesQuery = useAllEventCategoriesQuery();
+  const categories = categoriesQuery.data ?? [];
+  const [isCreateCategoryOpen, setIsCreateCategoryOpen] = useState(false);
 
   return (
     <SimpleGrid columns={{ base: 1, md: 2 }} gap="5">
       <Field.Root invalid={Boolean(errors.categoryId)} required>
-        <Field.Label>ID de categoría</Field.Label>
-        <Input
-          min="1"
-          placeholder="Ej. 1"
-          type="number"
-          {...register("categoryId")}
-        />
+        <Flex align="center" justify="space-between" w="full">
+          <Field.Label>Categoría</Field.Label>
+          <Button
+            colorPalette="brand"
+            onClick={() => setIsCreateCategoryOpen(true)}
+            size="xs"
+            type="button"
+            variant="ghost"
+          >
+            <Plus /> Nueva categoría
+          </Button>
+        </Flex>
+        <NativeSelect.Root
+          disabled={categoriesQuery.isPending && !categoriesQuery.data}
+        >
+          <NativeSelect.Field {...register("categoryId")}>
+            <option value="">
+              {categoriesQuery.isPending
+                ? "Cargando categorías..."
+                : categoriesQuery.isError && categories.length === 0
+                  ? "No se pudieron cargar las categorías"
+                  : "Selecciona una categoría"}
+            </option>
+            {categories.map((category) => (
+              <option key={category.id} value={String(category.id)}>
+                {category.name}
+              </option>
+            ))}
+          </NativeSelect.Field>
+          <NativeSelect.Indicator />
+        </NativeSelect.Root>
+        {categoriesQuery.isPending && (
+          <Flex align="center" color="fg.muted" gap="2">
+            <Spinner size="xs" />
+            <Text fontSize="sm">Cargando categorías...</Text>
+          </Flex>
+        )}
+        {categoriesQuery.isError && (
+          <Flex align="center" gap="2" wrap="wrap">
+            <Text color="fg.error" fontSize="sm">
+              {getErrorMessage(
+                categoriesQuery.error,
+                "No se pudieron cargar las categorías.",
+              )}
+            </Text>
+            <Button
+              onClick={() => void categoriesQuery.refetch()}
+              size="xs"
+              type="button"
+              variant="outline"
+            >
+              Reintentar
+            </Button>
+          </Flex>
+        )}
+        {!categoriesQuery.isPending &&
+          !categoriesQuery.isError &&
+          categories.length === 0 && (
+            <Text color="fg.muted" fontSize="sm">
+              Aún no hay categorías registradas. Crea la primera para continuar.
+            </Text>
+          )}
         {errors.categoryId && (
           <Field.ErrorText>{errors.categoryId.message}</Field.ErrorText>
         )}
       </Field.Root>
+
+      <CreateCategoryDialog
+        existingCategories={categories}
+        onCreated={(category) =>
+          setValue("categoryId", String(category.id), {
+            shouldValidate: true,
+            shouldDirty: true,
+            shouldTouch: true,
+          })
+        }
+        onOpenChange={setIsCreateCategoryOpen}
+        open={isCreateCategoryOpen}
+      />
 
       <Field.Root invalid={Boolean(errors.name)} required>
         <Field.Label>Nombre del evento</Field.Label>

@@ -14,6 +14,9 @@ import { RouteFallback } from "../components/ui/RouteFallback";
 import { ColorModeButton } from "../components/ui/ColorModeButton";
 import { toaster } from "../components/ui/chakra-base/toaster-instance";
 import { useAuthStore } from "../stores/auth.store";
+import { CalendarDays, LogOut, Plus, Tags, Ticket, Users } from "lucide-react";
+import { getLandingPath } from "../utils/roleNavigation";
+
 import { useIsAdmin } from "../utils/permissions";
 import { LogOut, Plus, Ticket, Users } from "lucide-react";
 export function AppLayout() {
@@ -70,8 +73,8 @@ export function AppLayout() {
             >
               <Ticket  color="white"/>
             </Box>
-            <Button
-                onClick={() => navigate("/dash")}
+              <Button
+                onClick={() => navigate(getLandingPath(user?.roleName))}
                 size="sm"
                 variant="ghost"
               >
@@ -83,6 +86,14 @@ export function AppLayout() {
           </Flex>
 
           <Box flex="1" />
+
+          <Button
+            onClick={() => navigate("/events")}
+            size="sm"
+            variant="ghost"
+          >
+            <CalendarDays /> Eventos
+          </Button>
 
           {isAdmin && (
             <>
@@ -99,6 +110,13 @@ export function AppLayout() {
                 variant="ghost"
               >
                 <Users /> Usuarios
+              </Button>
+              <Button
+                onClick={() => navigate("/categories")}
+                size="sm"
+                variant="ghost"
+              >
+                <Tags /> Categorías
               </Button>
               <Button
                 onClick={() => navigate("/managers")}
