@@ -32,11 +32,11 @@ import {
   useCreateEventManagersBatch,
   useGetEventManagersByEventId,
 } from "../../../queries/eventManager.queries";
-import { useGetEvents } from "../../../queries/events.queries";
-import { useGetUsers } from "../../../queries/users.queries";
 import { getErrorMessage } from "../../../utils/error";
 import { formatDate } from "../../../utils/date";
 import { SearchInput } from "../../../components/ui/SearchInput";
+import { useEventsQuery } from "../../../queries/events.queries";
+import { useGetUsers } from "../../../queries/users.queries";
 
 const STEPS = [
   { title: "Evento", description: "Elige el evento a administrar" },
@@ -66,7 +66,7 @@ export function AssignManagersDialog({
 
   const isManagerStep = open && step === 1 && selectedEvent !== null;
 
-  const eventsQuery = useGetEvents(
+  const eventsQuery = useEventsQuery(
     {
       page: eventPageIndex,
       size: EVENT_PICKER_PAGE_SIZE,

@@ -19,8 +19,8 @@ import type {
   BatchDto,
   CreateEventRequest,
   SectorByBatchDto,
-  SectorDto,
-  SimpleEventDto,
+  SectorDto
+ 
 } from "../types/event.types";
 import type { GetEventsRequest } from "../types/request";
 import type { ApiErrorResponse } from "../types/responses";
@@ -60,21 +60,7 @@ export function useEventsQuery(
   });
 }
 
-async function getAllEvents(): Promise<SimpleEventDto[]> {
-  return getAllPagedItems(
-    getEvents,
-    "No se pudieron cargar todos los eventos.",
-  );
-}
-
-export function useAllEventsQuery(enabled = true) {
-  return useQuery({
-    queryKey: eventKeys.detail(id),
-    queryFn: () => getEventById(id),
-    enabled: Number.isInteger(id) && id > 0,
-  });
-}
-
+ 
 export function useEventByIdQuery(id: number, enabled = true) {
   return useQuery({
     queryKey: eventKeys.detail(id),

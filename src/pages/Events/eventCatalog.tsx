@@ -5,16 +5,16 @@ import {
   Field,
   Flex,
   Heading,
-  Input,
-  InputGroup,
   SimpleGrid,
   Spinner,
   Stack,
   Text,
 } from "@chakra-ui/react";
-import { CalendarDays, ChevronLeft, ChevronRight, Search } from "lucide-react";
-import { useEffect, useState } from "react";
+import { ArrowRight, CalendarDays } from "lucide-react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { PaginationControl } from "../../components/ui/PaginationControl";
+import { SearchInput } from "../../components/ui/SearchInput";
 import {
   useEventByIdQuery,
   useEventsQuery,
@@ -28,61 +28,116 @@ import {
 import { getErrorMessage } from "../../utils/error";
 
 const PAGE_SIZE = 9;
-const SEARCH_DEBOUNCE_MS = 350;
 
 function EventCard({ event }: { event: SimpleEventDto }) {
   const navigate = useNavigate();
   const primaryColor = getSafeEventColor(event.primaryColor, "#10B981");
   const today = getTodayDateValue();
   const isPast = event.date < today;
+  const day = formatEventDate(event.date, { day: "2-digit" });
+  const month = formatEventDate(event.date, { month: "short" })
+    .replace(".", "")
+    .toUpperCase();
 
   return (
     <Box
+      _hover={{ borderColor: "brand.muted", shadow: "lg", transform: "translateY(-2px)" }}
       bg="bg.panel"
       borderColor="border"
       borderRadius="xl"
-      borderTopWidth="4px"
+      borderWidth="1px"
+      display="flex"
+      flexDirection="column"
       minW="0"
-      p="5"
+      overflow="hidden"
       shadow="sm"
-      style={{ borderTopColor: primaryColor }}
+      style={{ transition: "transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease" }}
     >
-      <Stack gap="4" h="full">
-        <Flex align="center" justify="space-between" gap="3">
-          <Badge colorPalette={isPast ? "gray" : "brand"} variant="subtle">
+      <Box
+        h="1.5"
+        style={
+          isPast
+            ? undefined
+            : { backgroundColor: primaryColor }
+        }
+        bg={isPast ? "bg.emphasized" : undefined}
+      />
+
+      <Stack flex="1" gap="4" p="5">
+        <Flex align="flex-start" justify="space-between" gap="3">
+          <Flex
+            align="center"
+            bg="bg.subtle"
+            borderColor="border"
+            borderRadius="lg"
+            borderWidth="1px"
+            direction="column"
+            flexShrink={0}
+            h="14"
+            justify="center"
+            w="14"
+          >
+            <Text fontSize="lg" fontWeight="extrabold" lineHeight="1">
+              {day}
+            </Text>
+            <Text
+              color="fg.muted"
+              fontSize="2xs"
+              fontWeight="semibold"
+              letterSpacing="wide"
+              mt="1"
+            >
+              {month}
+            </Text>
+          </Flex>
+
+          <Badge
+            colorPalette={isPast ? "gray" : "brand"}
+            flexShrink={0}
+            variant="subtle"
+          >
             {isPast ? "Finalizado" : "Próximo evento"}
           </Badge>
-          <Text color="fg.muted" fontSize="xs">
-            #{event.id}
+        </Flex>
+
+        <Heading
+          color="fg"
+          fontSize="2xl"
+          fontWeight="extrabold"
+          letterSpacing="tight"
+          lineClamp={2}
+          lineHeight="short"
+        >
+          {event.name}
+        </Heading>
+
+        <Flex align="center" color="fg.muted" gap="2">
+          <CalendarDays aria-hidden="true" size={16} />
+          <Text fontSize="sm">
+            {formatEventDate(event.date, { dateStyle: "medium" })}
+            {event.kickOffTime ? ` · ${event.kickOffTime.slice(0, 5)}` : ""}
           </Text>
         </Flex>
 
-        <Box>
-          <Heading color="fg" lineClamp={2} size="md">
-            {event.name}
-          </Heading>
-          <Flex align="center" color="fg.muted" gap="2" mt="3">
-            <CalendarDays aria-hidden="true" size={16} />
-            <Text fontSize="sm">
-              {formatEventDate(event.date, { dateStyle: "medium" })}
-              {event.kickOffTime
-                ? ` · ${event.kickOffTime.slice(0, 5)}`
-                : ""}
-            </Text>
-          </Flex>
-        </Box>
-
-        <Text color="fg.muted" flex="1" lineClamp={3} minH="3.75rem">
-          {event.description?.trim() || "Consulta los sectores y precios de este evento."}
+        <Text
+          color="fg.muted"
+          flex="1"
+          fontSize="sm"
+          lineClamp={3}
+          lineHeight="relaxed"
+          minH="3.75rem"
+        >
+          {event.description?.trim() ||
+            "Consulta los sectores y precios de este evento."}
         </Text>
 
         <Button
           colorPalette="brand"
           onClick={() => navigate(`/events/${event.id}`)}
-          variant="outline"
           w="full"
         >
           Ver sectores y precios
+          <ArrowRight />
         </Button>
       </Stack>
     </Box>
@@ -90,21 +145,16 @@ function EventCard({ event }: { event: SimpleEventDto }) {
 }
 
 export default function EventCatalog() {
-  const [search, setSearch] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
   const [page, setPage] = useState(1);
 
-  useEffect(() => {
-    const timeout = window.setTimeout(() => {
-      setDebouncedSearch(search.trim());
-      setPage(1);
-    }, SEARCH_DEBOUNCE_MS);
+  const handleSearchChange = (value: string) => {
+    setSearchTerm(value);
+    setPage(1);
+  };
 
-    return () => window.clearTimeout(timeout);
-  }, [search]);
-
-  const isIdSearch = /^\d+$/.test(debouncedSearch);
-  const parsedId = isIdSearch ? Number(debouncedSearch) : undefined;
+  const isIdSearch = /^\d+$/.test(searchTerm);
+  const parsedId = isIdSearch ? Number(searchTerm) : undefined;
   const validIdSearch =
     parsedId !== undefined &&
     Number.isSafeInteger(parsedId) &&
@@ -114,7 +164,7 @@ export default function EventCatalog() {
     {
       page,
       size: PAGE_SIZE,
-      name: debouncedSearch || undefined,
+      name: searchTerm || undefined,
       sort: "date,asc",
     },
     !isIdSearch,
@@ -132,8 +182,6 @@ export default function EventCatalog() {
       : []
     : pagedEvents;
   const pagination = eventsQuery.data?.pagination;
-  const totalPages = Math.max(pagination?.totalPages ?? 1, 1);
-  const currentPage = pagination?.page ?? page;
   const isLoading = isIdSearch
     ? validIdSearch && eventByIdQuery.isPending
     : eventsQuery.isPending;
@@ -153,23 +201,12 @@ export default function EventCatalog() {
         </Text>
       </Box>
 
-      <Field.Root>
-        <Field.Label htmlFor="event-search">Buscar eventos</Field.Label>
-        <InputGroup
-          maxW={{ base: "full", md: "xl" }}
-          startElement={<Search aria-hidden="true" size={16} />}
-        >
-          <Input
-            id="event-search"
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder="Buscar por nombre o ID"
-            value={search}
-          />
-        </InputGroup>
-        <Field.HelperText>
-          La búsqueda por nombre usa el filtro del servidor; un número busca el
-          evento por su ID.
-        </Field.HelperText>
+      <Field.Root maxW={{ base: "full", md: "xl" }}>
+        <Field.Label>Buscar eventos</Field.Label>
+        <SearchInput
+          onSearchChange={handleSearchChange}
+          placeholder="Buscar por nombre o ID"
+        />
       </Field.Root>
 
       {isLoading && (
@@ -219,7 +256,7 @@ export default function EventCatalog() {
           <Text fontWeight="semibold">
             {isIdSearch
               ? "No se encontró un evento con ese ID."
-              : debouncedSearch
+              : searchTerm
                 ? "No hay eventos que coincidan con la búsqueda."
                 : "Todavía no hay eventos disponibles."}
           </Text>
@@ -231,46 +268,20 @@ export default function EventCatalog() {
 
       {!isLoading && !isError && events.length > 0 && (
         <>
-          <SimpleGrid columns={{ base: 1, md: 2, xl: 3 }} gap="5">
+          <SimpleGrid columns={{ base: 1, md: 2, xl: 3 }} gap="6">
             {events.map((event) => (
               <EventCard event={event} key={event.id} />
             ))}
           </SimpleGrid>
 
           {!isIdSearch && (
-            <Flex
-              align={{ base: "stretch", sm: "center" }}
-              direction={{ base: "column", sm: "row" }}
-              gap="3"
-              justify="space-between"
-            >
-              <Text color="fg.muted" fontSize="sm">
-                Página {currentPage} de {totalPages} ·{" "}
-                {pagination?.totalItems ?? events.length} eventos
-              </Text>
-              <Flex gap="2" justify={{ base: "flex-end", sm: "initial" }}>
-                <Button
-                  disabled={currentPage <= 1 || eventsQuery.isFetching}
-                  onClick={() => setPage((current) => Math.max(current - 1, 1))}
-                  size="sm"
-                  variant="outline"
-                >
-                  <ChevronLeft /> Anterior
-                </Button>
-                <Button
-                  disabled={
-                    currentPage >= totalPages || eventsQuery.isFetching
-                  }
-                  onClick={() =>
-                    setPage((current) => Math.min(current + 1, totalPages))
-                  }
-                  size="sm"
-                  variant="outline"
-                >
-                  Siguiente <ChevronRight />
-                </Button>
-              </Flex>
-            </Flex>
+            <PaginationControl
+              isFetching={eventsQuery.isFetching}
+              itemLabel="eventos"
+              onPageChange={setPage}
+              page={page}
+              pagination={pagination}
+            />
           )}
         </>
       )}
