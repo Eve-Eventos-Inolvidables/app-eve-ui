@@ -177,7 +177,7 @@ export default function EventCatalog() {
         <Field.Label>Buscar eventos</Field.Label>
         <SearchInput
           onSearchChange={handleSearchChange}
-          placeholder="Buscar por nombre o ID"
+          placeholder="Buscar por nombre"
         />
         <Field.HelperText>
           La búsqueda por nombre respeta la categoría seleccionada.

@@ -50,13 +50,13 @@ function getCurrentRole(user: UserDto, roles: Role[]): Role | undefined {
 export default function UserManagement() {
   // SearchInput already debounces, so the value is used as-is.
   const [search, setSearch] = useState("");
-  const [pageIndex, setPageIndex] = useState(0);
+  const [page, setPage] = useState(1);
   const [selectedRoleByUser, setSelectedRoleByUser] = useState<
     Record<number, string>
   >({});
 
   const usersQuery = useGetUsers({
-    page: pageIndex,
+    page,
     size: USER_PAGE_SIZE,
     name: search || undefined,
   });
@@ -252,7 +252,7 @@ export default function UserManagement() {
             <SearchInput
               onSearchChange={(value) => {
                 setSearch(value);
-                setPageIndex(0);
+                setPage(1);
               }}
               placeholder="Buscar por nombre"
             />
@@ -289,8 +289,8 @@ export default function UserManagement() {
         <PaginationControl
           isFetching={usersQuery.isFetching}
           itemLabel="usuarios"
-          onPageChange={(page) => setPageIndex(page - 1)}
-          page={pageIndex + 1}
+          onPageChange={setPage}
+          page={page}
           pagination={pagination}
         />
       </Box>

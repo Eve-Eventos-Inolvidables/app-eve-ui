@@ -21,7 +21,7 @@ import { getErrorMessage } from "../../utils/error";
 const PAGE_SIZE = 10;
 
 export default function EventCategories() {
-  const [pageIndex, setPageIndex] = useState(0);
+  const [page, setPage] = useState(1);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [categoryToEdit, setCategoryToEdit] =
     useState<EventCategoryDto | null>(null);
@@ -29,7 +29,7 @@ export default function EventCategories() {
     useState<EventCategoryDto | null>(null);
 
   const categoriesQuery = useEventCategoriesQuery({
-    page: pageIndex,
+    page,
     size: PAGE_SIZE,
     sort: "name,asc",
   });
@@ -39,8 +39,8 @@ export default function EventCategories() {
   const allActiveCategories = allCategoriesQuery.data ?? [];
 
   const handleDeleted = () => {
-    if (categories.length === 1 && pageIndex > 0) {
-      setPageIndex((current) => Math.max(current - 1, 0));
+    if (categories.length === 1 && page > 1) {
+      setPage((current) => Math.max(current - 1, 1));
     }
     setCategoryToDelete(null);
   };
@@ -176,8 +176,8 @@ export default function EventCategories() {
             <PaginationControl
               isFetching={categoriesQuery.isFetching}
               itemLabel="categorías"
-              onPageChange={(page) => setPageIndex(page - 1)}
-              page={pageIndex + 1}
+              onPageChange={setPage}
+              page={page}
               pagination={pagination}
             />
           )}

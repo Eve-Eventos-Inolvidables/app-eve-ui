@@ -70,12 +70,12 @@ export function AssignManagersDialog({
 }: AssignManagersDialogProps) {
   const [step, setStep] = useState(0);
   const [eventSearch, setEventSearch] = useState("");
-  const [eventPageIndex, setEventPageIndex] = useState(0);
+  const [eventPageIndex, setEventPageIndex] = useState(1);
   const [selectedEvent, setSelectedEvent] = useState<SimpleEventDto | null>(
     null,
   );
   const [userSearch, setUserSearch] = useState("");
-  const [userPageIndex, setUserPageIndex] = useState(0);
+  const [userPageIndex, setUserPageIndex] = useState(1);
   const [selectedManagers, setSelectedManagers] = useState<UserDto[]>([]);
   const [summary, setSummary] = useState<AssignmentSummary | null>(null);
   // SearchInput keeps its own text, so it is remounted when the dialog resets.
@@ -137,10 +137,10 @@ export function AssignManagersDialog({
     setSearchSession((current) => current + 1);
     setStep(0);
     setEventSearch("");
-    setEventPageIndex(0);
+    setEventPageIndex(1);
     setSelectedEvent(null);
     setUserSearch("");
-    setUserPageIndex(0);
+    setUserPageIndex(1);
     setSelectedManagers([]);
     setSummary(null);
   };
@@ -195,12 +195,12 @@ export function AssignManagersDialog({
 
   const handleEventSearchChange = (value: string) => {
     setEventSearch(value);
-    setEventPageIndex(0);
+    setEventPageIndex(1);
   };
 
   const handleUserSearchChange = (value: string) => {
     setUserSearch(value);
-    setUserPageIndex(0);
+    setUserPageIndex(1);
   };
 
   const toggleEvent = (event: SimpleEventDto) => {
@@ -497,8 +497,8 @@ export function AssignManagersDialog({
                         <PaginationControl
                           isFetching={eventsQuery.isFetching}
                           itemLabel="eventos"
-                          onPageChange={(page) => setEventPageIndex(page - 1)}
-                          page={eventPageIndex + 1}
+                          onPageChange={setEventPageIndex}
+                          page={eventPageIndex}
                           pagination={eventsPagination}
                         />
                       </Box>
@@ -549,8 +549,8 @@ export function AssignManagersDialog({
                         <PaginationControl
                           isFetching={dialogUsersQuery.isFetching}
                           itemLabel="managers"
-                          onPageChange={(page) => setUserPageIndex(page - 1)}
-                          page={userPageIndex + 1}
+                          onPageChange={setUserPageIndex}
+                          page={userPageIndex}
                           pagination={usersPagination}
                         />
                       </Box>

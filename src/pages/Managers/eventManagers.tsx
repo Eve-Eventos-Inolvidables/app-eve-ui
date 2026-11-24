@@ -130,7 +130,7 @@ export default function EventManagers() {
           onPageChange={setManagerTablePageIndex}
           onRetry={() => void managersQuery.refetch()}
           onViewDetails={setManagerDetails}
-          pageIndex={managerTablePageIndex}
+          page={managerTablePageIndex}
           pagination={managersPagination}
         />
       </Stack>
