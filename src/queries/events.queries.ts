@@ -15,6 +15,7 @@ import {
   getPrices,
   getSectors,
 } from "../api/eventCatalog.api";
+import type { GetEventCatalogPageRequest } from "../api/eventCatalog.api";
 import { getAllPagedItems } from "../api/pagination";
 import type {
   BatchDto,
@@ -23,7 +24,7 @@ import type {
   SectorDto,
   SimpleEventDto,
 } from "../types/event.types";
-import type { GetEventsRequest } from "../types/request";
+import type { GetEventsRequest, PagedRequest } from "../types/request";
 import type { ApiErrorResponse } from "../types/responses";
 
 export const eventKeys = {
@@ -32,7 +33,8 @@ export const eventKeys = {
   list: (params: GetEventsRequest) => [...eventKeys.lists(), params] as const,
   allPages: () => [...eventKeys.all, "allPages"] as const,
   detail: (id: number) => [...eventKeys.all, "detail", id] as const,
-  catalogStructure: () => ["eventCatalog", "structure"] as const,
+  catalogStructure: (eventId: number) =>
+    ["eventCatalog", "structure", eventId] as const,
 };
 
 export interface EventCatalogStructure {
@@ -92,21 +94,39 @@ export function useEventByIdQuery(id: number, enabled = true) {
   });
 }
 
-async function getEventCatalogStructure(): Promise<EventCatalogStructure> {
+async function getEventCatalogStructure(
+  eventId: number,
+): Promise<EventCatalogStructure> {
+  const getEventCatalogPage = (params: PagedRequest): GetEventCatalogPageRequest => ({
+    ...params,
+    eventId,
+  });
   const [sectors, batches, prices] = await Promise.all([
-    getAllPagedItems(getSectors, "No se pudieron cargar los sectores."),
-    getAllPagedItems(getBatches, "No se pudieron cargar las tandas."),
-    getAllPagedItems(getPrices, "No se pudieron cargar los precios."),
+    getAllPagedItems(
+      (params) => getSectors(getEventCatalogPage(params)),
+      "No se pudieron cargar los sectores.",
+    ),
+    getAllPagedItems(
+      (params) => getBatches(getEventCatalogPage(params)),
+      "No se pudieron cargar las tandas.",
+    ),
+    getAllPagedItems(
+      (params) => getPrices(getEventCatalogPage(params)),
+      "No se pudieron cargar los precios.",
+    ),
   ]);
 
   return { sectors, batches, prices };
 }
 
-export function useEventCatalogStructureQuery(enabled = true) {
+export function useEventCatalogStructureQuery(
+  eventId: number,
+  enabled = true,
+) {
   return useQuery({
-    queryKey: eventKeys.catalogStructure(),
-    queryFn: getEventCatalogStructure,
-    enabled,
+    queryKey: eventKeys.catalogStructure(eventId),
+    queryFn: () => getEventCatalogStructure(eventId),
+    enabled: enabled && Number.isSafeInteger(eventId) && eventId > 0,
   });
 }
 

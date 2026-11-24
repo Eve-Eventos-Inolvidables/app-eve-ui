@@ -2,7 +2,6 @@ import type { BaseEntity } from "./entity";
 
 export interface CreateBuyRequest {
   eventId: number;
-  userId: number;
   sectorByBatchIds: number[];
 }
 
@@ -24,4 +23,5 @@ export interface GetTicketsRequest {
   size?: number;
   buyId?: number;
   sectorByBatchId?: number;
+  eventId?: number;
 }

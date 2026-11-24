@@ -14,6 +14,7 @@ import {
 } from "@chakra-ui/react";
 import { QRCodeSVG } from "qrcode.react";
 import { ArrowLeft, MapPin, Minus, Plus, Ticket } from "lucide-react";
+import axios from "axios";
 import { useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
@@ -23,6 +24,7 @@ import {
 } from "../../queries/events.queries";
 import {
   useCreateBuyMutation,
+  useTicketCountByEventQuery,
   useTicketsByBuyQuery,
 } from "../../queries/sales.queries";
 import { useAuthStore } from "../../stores/auth.store";
@@ -152,10 +154,15 @@ export default function EventDetails() {
 
   const eventQuery = useEventByIdQuery(eventId, isValidId);
   const structureQuery = useEventCatalogStructureQuery(
+    eventId,
     isValidId && eventQuery.isSuccess,
   );
   const lookupPricesMutation = useLookupPricesForEventMutation();
   const createBuyMutation = useCreateBuyMutation();
+  const ticketCountQuery = useTicketCountByEventQuery(
+    eventId,
+    isClient && isValidId && eventQuery.isSuccess && Boolean(user && user.id > 0),
+  );
   const [selectedQuantities, setSelectedQuantities] = useState<
     Record<number, number>
   >({});
@@ -213,6 +220,11 @@ export default function EventDetails() {
     (total, item) => total + item.quantity,
     0,
   );
+  const purchasedTicketCount = ticketCountQuery.data ?? 0;
+  const remainingPersonLimit = Math.max(
+    0,
+    (event?.ticketsPerPersonLimit ?? 0) - purchasedTicketCount,
+  );
   const estimatedTotal = selectedItems.reduce(
     (total, item) => total + item.unitPrice * item.quantity,
     0,
@@ -231,21 +243,32 @@ export default function EventDetails() {
   }, [sectorGroups]);
   const isPastEvent = event ? event.date < getTodayDateValue() : false;
   const isVisibleForPurchase =
-    event !== undefined && event.visibleStart <= getTodayDateValue();
-  const canPurchase =
+    event !== undefined &&
+    !event.archived &&
+    event.visibleStart <= getTodayDateValue();
+  const canEditSelection =
     isClient &&
     Boolean(user && user.id > 0) &&
     !isPastEvent &&
     isVisibleForPurchase &&
+    ticketCountQuery.isSuccess &&
+    !ticketCountQuery.isFetching &&
     !completedBuy;
+  const canPurchase =
+    canEditSelection &&
+    !structureQuery.isFetching &&
+    remainingPersonLimit > 0;
 
   const updateOptionQuantity = (priceId: number, requestedQuantity: number) => {
     const option = sectorGroups
       .flatMap((group) => group.prices)
       .find(({ price }) => price.id === priceId);
+    const currentPrice = option
+      ? reviewedPricesById.get(priceId) ?? option.price
+      : undefined;
     const configuredQuantity = Math.max(
       0,
-      Math.floor(option?.price.quantity ?? 0),
+      Math.floor(currentPrice?.quantity ?? 0),
     );
 
     setSelectedQuantities((current) => {
@@ -254,10 +277,9 @@ export default function EventDetails() {
           Number(id) === priceId ? total : total + quantity,
         0,
       );
-      const eventLimit = event?.ticketsPerPersonLimit ?? 0;
       const maxForOption = Math.max(
         0,
-        Math.min(configuredQuantity, eventLimit - otherTickets),
+        Math.min(configuredQuantity, remainingPersonLimit - otherTickets),
       );
       const quantity = Math.min(
         maxForOption,
@@ -285,24 +307,50 @@ export default function EventDetails() {
 
     setReviewError(null);
     setPurchaseError(null);
+    if (selectedTicketCount > remainingPersonLimit) {
+      setReviewError(
+        "Tu selección supera las entradas que aún puedes comprar para este evento.",
+      );
+      return;
+    }
 
     try {
       const prices = await lookupPricesMutation.mutateAsync({
         eventId: event.id,
         sectorByBatchIds: selectedItems.map(({ price }) => price.id),
       });
-      const returnedIds = new Set(prices.map((price) => price.id));
-      const missingId = selectedItems.find(
-        ({ price }) => !returnedIds.has(price.id),
-      );
-
-      if (missingId) {
-        throw new Error(
-          "Uno de los precios cambió o ya no está disponible. Actualiza la página e inténtalo otra vez.",
-        );
-      }
+      const pricesById = new Map(prices.map((price) => [price.id, price]));
+      const unavailableItems = selectedItems.filter(({ price, quantity }) => {
+        const latestPrice = pricesById.get(price.id);
+        return !latestPrice || latestPrice.quantity < quantity;
+      });
 
       setReviewedPrices(prices);
+      if (unavailableItems.length > 0) {
+        const latestAvailableById = new Map(
+          prices.map((price) => [price.id, price.quantity]),
+        );
+        setSelectedQuantities((current) => {
+          const next: Record<number, number> = {};
+          let remaining = remainingPersonLimit;
+
+          for (const [rawId, selectedQuantity] of Object.entries(current)) {
+            const id = Number(rawId);
+            const available = Math.max(0, latestAvailableById.get(id) ?? 0);
+            const adjusted = Math.min(selectedQuantity, available, remaining);
+            if (adjusted > 0) {
+              next[id] = adjusted;
+              remaining -= adjusted;
+            }
+          }
+          return next;
+        });
+        setReviewError(
+          "La disponibilidad cambió. Ajusté tu selección; revísala y vuelve a confirmar.",
+        );
+        return;
+      }
+
       setIsPurchaseConfirmOpen(true);
     } catch (error) {
       setReviewError(
@@ -320,7 +368,8 @@ export default function EventDetails() {
       !event ||
       !user ||
       user.id <= 0 ||
-      selectedItems.length === 0
+      selectedItems.length === 0 ||
+      selectedTicketCount > remainingPersonLimit
     ) {
       return;
     }
@@ -330,7 +379,6 @@ export default function EventDetails() {
     try {
       const buy = await createBuyMutation.mutateAsync({
         eventId: event.id,
-        userId: user.id,
         sectorByBatchIds: selectedItems.flatMap(({ price, quantity }) =>
           Array.from({ length: quantity }, () => price.id),
         ),
@@ -340,10 +388,42 @@ export default function EventDetails() {
       setSelectedQuantities({});
       setReviewedPrices(null);
       setIsPurchaseConfirmOpen(false);
+      void structureQuery.refetch();
     } catch (error) {
       setPurchaseError(
         getErrorMessage(error, "No se pudo registrar la compra."),
       );
+      if (axios.isAxiosError(error) && error.response?.status === 409) {
+        setIsPurchaseConfirmOpen(false);
+        setReviewedPrices(null);
+        const [catalogResult, ticketCountResult] = await Promise.all([
+          structureQuery.refetch(),
+          ticketCountQuery.refetch(),
+        ]);
+        if (catalogResult.data) {
+          const availableById = new Map(
+            catalogResult.data.prices.map((price) => [price.id, price.quantity]),
+          );
+          const currentLimit =
+            (event.ticketsPerPersonLimit ?? 0) -
+            (ticketCountResult.data ?? purchasedTicketCount);
+          setSelectedQuantities((current) => {
+            const next: Record<number, number> = {};
+            let remaining = Math.max(0, currentLimit);
+
+            for (const [rawId, selectedQuantity] of Object.entries(current)) {
+              const id = Number(rawId);
+              const available = Math.max(0, availableById.get(id) ?? 0);
+              const adjusted = Math.min(selectedQuantity, available, remaining);
+              if (adjusted > 0) {
+                next[id] = adjusted;
+                remaining -= adjusted;
+              }
+            }
+            return next;
+          });
+        }
+      }
     }
   };
 
@@ -512,6 +592,38 @@ export default function EventDetails() {
         </Text>
       )}
 
+      {isClient && ticketCountQuery.isPending && (
+        <Flex align="center" color="fg.muted" gap="3">
+          <Spinner size="sm" />
+          Validando el límite de entradas de tu cuenta...
+        </Flex>
+      )}
+
+      {isClient && ticketCountQuery.isError && (
+        <Stack align="flex-start" gap="2">
+          <Text color="fg.error" fontSize="sm" role="alert">
+            No se pudo validar cuántas entradas ya tienes para este evento.
+          </Text>
+          <Button
+            onClick={() => void ticketCountQuery.refetch()}
+            size="sm"
+            variant="outline"
+          >
+            Reintentar validación
+          </Button>
+        </Stack>
+      )}
+
+      {isClient &&
+        ticketCountQuery.isSuccess &&
+        remainingPersonLimit === 0 &&
+        !completedBuy && (
+          <Text color="fg.muted" fontSize="sm">
+            Ya alcanzaste el límite de {event.ticketsPerPersonLimit} entradas
+            para este evento.
+          </Text>
+        )}
+
       {structureQuery.isPending && (
         <Flex align="center" color="fg.muted" gap="3" justify="center" py="10">
           <Spinner color="brand.solid" />
@@ -602,15 +714,25 @@ export default function EventDetails() {
                   ) : (
                     prices.map(({ batch, price }) => {
                       const status = getBatchStatus(batch);
+                      const currentPrice =
+                        reviewedPricesById.get(price.id) ?? price;
+                      const availableQuantity = Math.max(
+                        0,
+                        Math.floor(currentPrice.quantity),
+                      );
                       const quantity = selectedQuantities[price.id] ?? 0;
+                      const otherSelectedTickets = selectedTicketCount - quantity;
                       const canSelectThisOption =
                         canPurchase &&
                         !isPurchaseConfirmOpen &&
                         status.label === "En curso" &&
-                        price.quantity > 0;
-                      const maxForOption = Math.min(
-                        price.quantity,
-                        event.ticketsPerPersonLimit,
+                        availableQuantity > 0;
+                      const maxForOption = Math.max(
+                        0,
+                        Math.min(
+                          availableQuantity,
+                          remainingPersonLimit - otherSelectedTickets,
+                        ),
                       );
 
                       return (
@@ -628,13 +750,13 @@ export default function EventDetails() {
                                 </Text>
                                 <Badge
                                   colorPalette={
-                                    price.quantity > 0
+                                    availableQuantity > 0
                                       ? status.colorPalette
                                       : "gray"
                                   }
                                   variant="subtle"
                                 >
-                                  {price.quantity > 0
+                                  {availableQuantity > 0
                                     ? status.label
                                     : "Sin cupos"}
                                 </Badge>
@@ -651,18 +773,15 @@ export default function EventDetails() {
                             </Box>
                             <Text
                               color="fg"
-                              fontSize="lg"
-                              fontWeight="bold"
-                              whiteSpace="nowrap"
-                            >
-                              {formatPrice(
-                                reviewedPricesById.get(price.id)?.price ??
-                                  price.price,
-                              )}
+                                fontSize="lg"
+                                fontWeight="bold"
+                                whiteSpace="nowrap"
+                              >
+                                {formatPrice(currentPrice.price)}
                             </Text>
                           </Flex>
 
-                          {canPurchase && status.label === "En curso" && (
+                          {canEditSelection && status.label === "En curso" && (
                             <Flex
                               align="center"
                               justify="space-between"
@@ -705,7 +824,7 @@ export default function EventDetails() {
                                     !canSelectThisOption ||
                                     quantity >= maxForOption ||
                                     selectedTicketCount >=
-                                      event.ticketsPerPersonLimit
+                                      remainingPersonLimit
                                   }
                                   onClick={() =>
                                     updateOptionQuantity(
@@ -732,6 +851,12 @@ export default function EventDetails() {
           </SimpleGrid>
         )}
 
+      {(reviewError || purchaseError) && selectedItems.length === 0 && (
+        <Text color="fg.error" fontSize="sm" role="alert">
+          {reviewError ?? purchaseError}
+        </Text>
+      )}
+
       {isClient && (!user || user.id <= 0) && !completedBuy && (
         <Box
           bg="bg.panel"
@@ -748,7 +873,7 @@ export default function EventDetails() {
         </Box>
       )}
 
-      {canPurchase && selectedItems.length > 0 && (
+      {canEditSelection && selectedItems.length > 0 && (
         <Box
           bg="bg.panel"
           borderColor="border"
@@ -765,9 +890,20 @@ export default function EventDetails() {
                 Tu selección
               </Heading>
               <Badge colorPalette="brand" variant="subtle">
-                {selectedTicketCount} de {event.ticketsPerPersonLimit}
+                {selectedTicketCount} de {remainingPersonLimit} disponibles
               </Badge>
             </Flex>
+
+            <Text color="fg.muted" fontSize="sm">
+              Ya tienes {purchasedTicketCount} de {event.ticketsPerPersonLimit}{" "}
+              entradas para este evento.
+            </Text>
+            {selectedTicketCount > remainingPersonLimit && (
+              <Text color="fg.error" fontSize="sm" role="alert">
+                Tu selección supera las entradas que aún puedes comprar.
+                Reduce la cantidad antes de continuar.
+              </Text>
+            )}
 
             <Stack gap="2">
               {selectedItems.map((item) => (
@@ -818,7 +954,8 @@ export default function EventDetails() {
               disabled={
                 lookupPricesMutation.isPending ||
                 createBuyMutation.isPending ||
-                estimatedTotal <= 0
+                estimatedTotal <= 0 ||
+                selectedTicketCount > remainingPersonLimit
               }
               loading={lookupPricesMutation.isPending}
               loadingText="Verificando precios..."

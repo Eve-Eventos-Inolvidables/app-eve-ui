@@ -13,6 +13,8 @@ export const salesKeys = {
   tickets: () => [...salesKeys.all, "tickets"] as const,
   ticketsByBuy: (buyId: number) =>
     [...salesKeys.tickets(), "buy", buyId] as const,
+  ticketCountByEvent: (eventId: number) =>
+    [...salesKeys.tickets(), "event", eventId, "count"] as const,
 };
 
 async function getAllTicketsForBuy(buyId: number): Promise<TicketDto[]> {
@@ -27,6 +29,22 @@ export function useTicketsByBuyQuery(buyId: number, enabled = true) {
     queryKey: salesKeys.ticketsByBuy(buyId),
     queryFn: () => getAllTicketsForBuy(buyId),
     enabled: enabled && Number.isInteger(buyId) && buyId > 0,
+  });
+}
+
+async function getTicketCountForEvent(eventId: number): Promise<number> {
+  const response = await getTickets({ eventId, page: 1, size: 1 });
+  if (!response.success) {
+    throw new Error(response.message || "No se pudo validar el límite de entradas.");
+  }
+  return response.pagination.totalItems;
+}
+
+export function useTicketCountByEventQuery(eventId: number, enabled = true) {
+  return useQuery({
+    queryKey: salesKeys.ticketCountByEvent(eventId),
+    queryFn: () => getTicketCountForEvent(eventId),
+    enabled: enabled && Number.isInteger(eventId) && eventId > 0,
   });
 }
 
@@ -45,7 +63,12 @@ export function useCreateBuyMutation() {
     },
     // Purchase creation is not idempotent; never automatically retry the POST.
     retry: 0,
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: salesKeys.buys() }),
+    onSuccess: (_buy, payload) =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: salesKeys.buys() }),
+        queryClient.invalidateQueries({
+          queryKey: salesKeys.ticketCountByEvent(payload.eventId),
+        }),
+      ]),
   });
 }
