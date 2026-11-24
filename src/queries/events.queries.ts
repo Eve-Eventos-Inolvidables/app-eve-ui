@@ -72,9 +72,9 @@ async function getAllEvents(): Promise<SimpleEventDto[]> {
 
 export function useAllEventsQuery(enabled = true) {
   return useQuery({
-    queryKey: eventKeys.allPages(),
-    queryFn: getAllEvents,
-    enabled,
+    queryKey: eventKeys.detail(id),
+    queryFn: () => getEventById(id),
+    enabled: Number.isInteger(id) && id > 0,
   });
 }
 

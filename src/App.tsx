@@ -6,6 +6,7 @@ import { router } from "./routes";
 function App() {
   return (
     <Suspense fallback={<RouteFallback />}>
+      
       <RouterProvider router={router} />
     </Suspense>
   );

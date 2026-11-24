@@ -1,8 +1,10 @@
 import axios from "axios";
+import { env } from "../config/env";
 import { useAuthStore } from "../stores/auth.store";
+import { clearSession } from "../utils/session";
 
 export const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_API_URL,
+  baseURL: env.apiUrl,
   headers: { "Content-Type": "application/json" },
 });
 
@@ -20,7 +22,7 @@ apiClient.interceptors.response.use(
   (res) => res,
   (error) => {
     if (error.response?.status === 401) {
-      useAuthStore.getState().clearAuth();
+      clearSession({ expired: true });
     }
     return Promise.reject(error);
   },
