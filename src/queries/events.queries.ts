@@ -11,6 +11,7 @@ import {
 } from "../api/events.api";
 import {
   getBatches,
+  lookupPricesForEvent,
   getPrices,
   getSectors,
 } from "../api/eventCatalog.api";
@@ -106,6 +107,26 @@ export function useEventCatalogStructureQuery(enabled = true) {
     queryKey: eventKeys.catalogStructure(),
     queryFn: getEventCatalogStructure,
     enabled,
+  });
+}
+
+export function useLookupPricesForEventMutation() {
+  return useMutation({
+    mutationFn: async ({
+      eventId,
+      sectorByBatchIds,
+    }: {
+      eventId: number;
+      sectorByBatchIds: number[];
+    }) => {
+      const response = await lookupPricesForEvent(eventId, sectorByBatchIds);
+
+      if (!response.success || !response.data) {
+        throw new Error(response.message || "No se pudieron verificar los precios.");
+      }
+
+      return response.data;
+    },
   });
 }
 

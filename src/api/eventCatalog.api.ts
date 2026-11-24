@@ -64,3 +64,15 @@ export async function getPriceById(
   );
   return data;
 }
+
+export async function lookupPricesForEvent(
+  eventId: number,
+  sectorByBatchIds: number[],
+): Promise<ApiResponse<SectorByBatchDto[]>> {
+  const { data } = await apiClient.post<ApiResponse<SectorByBatchDto[]>>(
+    `${EVENT_URL}/api/precio/lookup`,
+    sectorByBatchIds,
+    { params: { eventId } },
+  );
+  return data;
+}
