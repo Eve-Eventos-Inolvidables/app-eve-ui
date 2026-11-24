@@ -8,8 +8,12 @@ import type { GetPagedItemsRequest } from "../types/request";
 import type { ApiPagedResponse, ApiResponse } from "../types/responses";
 import { apiClient } from "./client";
 
+export type GetEventCatalogPageRequest = GetPagedItemsRequest & {
+  eventId: number;
+};
+
 export async function getSectors(
-  params: GetPagedItemsRequest,
+  params: GetEventCatalogPageRequest,
 ): Promise<ApiPagedResponse<SectorDto[]>> {
   const { data } = await apiClient.get<ApiPagedResponse<SectorDto[]>>(
     `${EVENT_URL}/api/sector`,
@@ -28,7 +32,7 @@ export async function getSectorById(
 }
 
 export async function getBatches(
-  params: GetPagedItemsRequest,
+  params: GetEventCatalogPageRequest,
 ): Promise<ApiPagedResponse<BatchDto[]>> {
   const { data } = await apiClient.get<ApiPagedResponse<BatchDto[]>>(
     `${EVENT_URL}/api/batch`,
@@ -47,7 +51,7 @@ export async function getBatchById(
 }
 
 export async function getPrices(
-  params: GetPagedItemsRequest,
+  params: GetEventCatalogPageRequest,
 ): Promise<ApiPagedResponse<SectorByBatchDto[]>> {
   const { data } = await apiClient.get<ApiPagedResponse<SectorByBatchDto[]>>(
     `${EVENT_URL}/api/precio`,
@@ -61,6 +65,18 @@ export async function getPriceById(
 ): Promise<ApiResponse<SectorByBatchDto>> {
   const { data } = await apiClient.get<ApiResponse<SectorByBatchDto>>(
     `${EVENT_URL}/api/precio/${id}`,
+  );
+  return data;
+}
+
+export async function lookupPricesForEvent(
+  eventId: number,
+  sectorByBatchIds: number[],
+): Promise<ApiResponse<SectorByBatchDto[]>> {
+  const { data } = await apiClient.post<ApiResponse<SectorByBatchDto[]>>(
+    `${EVENT_URL}/api/precio/lookup`,
+    sectorByBatchIds,
+    { params: { eventId } },
   );
   return data;
 }

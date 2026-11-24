@@ -11,18 +11,21 @@ import {
 } from "../api/events.api";
 import {
   getBatches,
+  lookupPricesForEvent,
   getPrices,
   getSectors,
 } from "../api/eventCatalog.api";
+import type { GetEventCatalogPageRequest } from "../api/eventCatalog.api";
 import { getAllPagedItems } from "../api/pagination";
 import type {
   BatchDto,
   CreateEventRequest,
   SectorByBatchDto,
-  SectorDto
+  SectorDto,
+  SimpleEventDto
  
 } from "../types/event.types";
-import type { GetEventsRequest } from "../types/request";
+import type { GetEventsRequest, PagedRequest } from "../types/request";
 import type { ApiErrorResponse } from "../types/responses";
 
 export const eventKeys = {
@@ -31,7 +34,8 @@ export const eventKeys = {
   list: (params: GetEventsRequest) => [...eventKeys.lists(), params] as const,
   allPages: () => [...eventKeys.all, "allPages"] as const,
   detail: (id: number) => [...eventKeys.all, "detail", id] as const,
-  catalogStructure: () => ["eventCatalog", "structure"] as const,
+  catalogStructure: (eventId: number) =>
+    ["eventCatalog", "structure", eventId] as const,
 };
 
 export interface EventCatalogStructure {
@@ -60,9 +64,23 @@ export function useEventsQuery(
   });
 }
 
- 
-export function eventByIdQueryOptions(id: number) {
-  return {
+async function getAllEvents(): Promise<SimpleEventDto[]> {
+  return getAllPagedItems(
+    getEvents,
+    "No se pudieron cargar todos los eventos.",
+  );
+}
+
+export function useAllEventsQuery(enabled = true) {
+  return useQuery({
+    queryKey: eventKeys.allPages(),
+    queryFn: getAllEvents,
+    enabled,
+  });
+}
+
+export function useEventByIdQuery(id: number ) {
+  return useQuery({
     queryKey: eventKeys.detail(id),
     queryFn: async () => {
       const response = await getEventById(id);
@@ -73,31 +91,63 @@ export function eventByIdQueryOptions(id: number) {
 
       return response.data;
     },
-  };
-}
-
-export function useEventByIdQuery(id: number, enabled = true) {
-  return useQuery({
-    ...eventByIdQueryOptions(id),
-    enabled: enabled && Number.isInteger(id) && id > 0,
   });
 }
 
-async function getEventCatalogStructure(): Promise<EventCatalogStructure> {
+
+async function getEventCatalogStructure(
+  eventId: number,
+): Promise<EventCatalogStructure> {
+  const getEventCatalogPage = (params: PagedRequest): GetEventCatalogPageRequest => ({
+    ...params,
+    eventId,
+  });
   const [sectors, batches, prices] = await Promise.all([
-    getAllPagedItems(getSectors, "No se pudieron cargar los sectores."),
-    getAllPagedItems(getBatches, "No se pudieron cargar las tandas."),
-    getAllPagedItems(getPrices, "No se pudieron cargar los precios."),
+    getAllPagedItems(
+      (params) => getSectors(getEventCatalogPage(params)),
+      "No se pudieron cargar los sectores.",
+    ),
+    getAllPagedItems(
+      (params) => getBatches(getEventCatalogPage(params)),
+      "No se pudieron cargar las tandas.",
+    ),
+    getAllPagedItems(
+      (params) => getPrices(getEventCatalogPage(params)),
+      "No se pudieron cargar los precios.",
+    ),
   ]);
 
   return { sectors, batches, prices };
 }
 
-export function useEventCatalogStructureQuery(enabled = true) {
+export function useEventCatalogStructureQuery(
+  eventId: number,
+  enabled = true,
+) {
   return useQuery({
-    queryKey: eventKeys.catalogStructure(),
-    queryFn: getEventCatalogStructure,
-    enabled,
+    queryKey: eventKeys.catalogStructure(eventId),
+    queryFn: () => getEventCatalogStructure(eventId),
+    enabled: enabled && Number.isSafeInteger(eventId) && eventId > 0,
+  });
+}
+
+export function useLookupPricesForEventMutation() {
+  return useMutation({
+    mutationFn: async ({
+      eventId,
+      sectorByBatchIds,
+    }: {
+      eventId: number;
+      sectorByBatchIds: number[];
+    }) => {
+      const response = await lookupPricesForEvent(eventId, sectorByBatchIds);
+
+      if (!response.success || !response.data) {
+        throw new Error(response.message || "No se pudieron verificar los precios.");
+      }
+
+      return response.data;
+    },
   });
 }
 
