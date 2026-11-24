@@ -16,6 +16,8 @@ export interface PagedRequestByName extends PagedSortedRequest {
 export interface GetEventsRequest extends PagedRequestByName {
   categoryId?: number;
   visibleStart?: string;
+  dateFrom?: string;
+  dateBefore?: string;
 }
 
 export type GetEventCategoriesRequest = PagedSortedRequest;

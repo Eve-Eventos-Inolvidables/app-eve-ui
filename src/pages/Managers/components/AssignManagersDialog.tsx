@@ -32,6 +32,8 @@ import {
   useCreateEventManagersBatch,
   useGetEventManagersByEventId,
 } from "../../../queries/eventManager.queries";
+import { useEventsQuery } from "../../../queries/events.queries";
+import { useGetUsers } from "../../../queries/users.queries";
 import { getErrorMessage } from "../../../utils/error";
 import { formatDate } from "../../../utils/date";
 import { SearchInput } from "../../../components/ui/SearchInput";
