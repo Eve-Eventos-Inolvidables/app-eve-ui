@@ -79,8 +79,8 @@ export function useAllEventsQuery(enabled = true) {
   });
 }
 
-export function useEventByIdQuery(id: number ) {
-  return useQuery({
+export function eventByIdQueryOptions(id: number) {
+  return {
     queryKey: eventKeys.detail(id),
     queryFn: async () => {
       const response = await getEventById(id);
@@ -91,6 +91,13 @@ export function useEventByIdQuery(id: number ) {
 
       return response.data;
     },
+  };
+}
+
+export function useEventByIdQuery(id: number, enabled = true) {
+  return useQuery({
+    ...eventByIdQueryOptions(id),
+    enabled: enabled && Number.isSafeInteger(id) && id > 0,
   });
 }
 

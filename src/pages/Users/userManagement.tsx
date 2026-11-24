@@ -5,7 +5,6 @@ import {
   Field,
   Flex,
   Heading,
-  Input,
   NativeSelect,
   Stack,
   Text,
@@ -21,7 +20,7 @@ import { EmptyState } from "../../components/ui/EmptyState";
 import { PaginationControl } from "../../components/ui/PaginationControl";
 import { toaster } from "../../components/ui/chakra-base/toaster-instance";
 import { USER_PAGE_SIZE } from "../../constants/pagination";
-import { useDebouncedValue } from "../../hooks/useDebouncedValue";
+import { SearchInput } from "../../components/ui/SearchInput";
 import {
   useGetRoles,
   useGetUsers,
@@ -49,8 +48,8 @@ function getCurrentRole(user: UserDto, roles: Role[]): Role | undefined {
 }
 
 export default function UserManagement() {
+  // SearchInput already debounces, so the value is used as-is.
   const [search, setSearch] = useState("");
-  const debouncedSearch = useDebouncedValue(search.trim());
   const [pageIndex, setPageIndex] = useState(0);
   const [selectedRoleByUser, setSelectedRoleByUser] = useState<
     Record<number, string>
@@ -59,7 +58,7 @@ export default function UserManagement() {
   const usersQuery = useGetUsers({
     page: pageIndex,
     size: USER_PAGE_SIZE,
-    name: debouncedSearch || undefined,
+    name: search || undefined,
   });
   const rolesQuery = useGetRoles();
   const updateUserMutation = useUpdateUser();
@@ -250,13 +249,12 @@ export default function UserManagement() {
         <Box borderBottomColor="border" borderBottomWidth="1px" p="4">
           <Field.Root>
             <Field.Label>Buscar usuario</Field.Label>
-            <Input
-              onChange={(event) => {
-                setSearch(event.target.value);
+            <SearchInput
+              onSearchChange={(value) => {
+                setSearch(value);
                 setPageIndex(0);
               }}
               placeholder="Buscar por nombre"
-              value={search}
             />
           </Field.Root>
           {rolesQuery.isError && (
@@ -291,7 +289,8 @@ export default function UserManagement() {
         <PaginationControl
           isFetching={usersQuery.isFetching}
           itemLabel="usuarios"
-          onPageChange={setPageIndex}
+          onPageChange={(page) => setPageIndex(page - 1)}
+          page={pageIndex + 1}
           pagination={pagination}
         />
       </Box>

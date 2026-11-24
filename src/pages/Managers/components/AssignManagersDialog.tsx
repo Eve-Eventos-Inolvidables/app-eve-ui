@@ -1,4 +1,4 @@
-import {
+﻿import {
   Badge,
   Box,
   Button,
@@ -28,7 +28,6 @@ import {
   MANAGER_PICKER_PAGE_SIZE,
 } from "../../../constants/pagination";
 import { MANAGER_ROLE_ID } from "../../../constants/roles";
-import { useDebouncedValue } from "../../../hooks/useDebouncedValue";
 import {
   useAssignManagersToEvent,
   useGetEventManagersByEventId,
@@ -38,8 +37,6 @@ import { useGetUsers } from "../../../queries/users.queries";
 import { getErrorMessage } from "../../../utils/error";
 import { formatDate } from "../../../utils/date";
 import { SearchInput } from "../../../components/ui/SearchInput";
-import { useEventsQuery } from "../../../queries/events.queries";
-import { useGetUsers } from "../../../queries/users.queries";
 
 const STEPS = [
   { title: "Evento", description: "Elige el evento a administrar" },
@@ -73,16 +70,16 @@ export function AssignManagersDialog({
 }: AssignManagersDialogProps) {
   const [step, setStep] = useState(0);
   const [eventSearch, setEventSearch] = useState("");
-  const debouncedEventSearch = useDebouncedValue(eventSearch.trim());
   const [eventPageIndex, setEventPageIndex] = useState(0);
   const [selectedEvent, setSelectedEvent] = useState<SimpleEventDto | null>(
     null,
   );
   const [userSearch, setUserSearch] = useState("");
-  const debouncedUserSearch = useDebouncedValue(userSearch.trim());
   const [userPageIndex, setUserPageIndex] = useState(0);
   const [selectedManagers, setSelectedManagers] = useState<UserDto[]>([]);
   const [summary, setSummary] = useState<AssignmentSummary | null>(null);
+  // SearchInput keeps its own text, so it is remounted when the dialog resets.
+  const [searchSession, setSearchSession] = useState(0);
 
   const isManagerStep = open && step === 1 && selectedEvent !== null;
 
@@ -90,7 +87,7 @@ export function AssignManagersDialog({
     {
       page: eventPageIndex,
       size: EVENT_PICKER_PAGE_SIZE,
-      name: debouncedEventSearch || undefined,
+      name: eventSearch || undefined,
     },
     open,
   );
@@ -102,7 +99,7 @@ export function AssignManagersDialog({
       roleId: MANAGER_ROLE_ID,
       page: userPageIndex,
       size: MANAGER_PICKER_PAGE_SIZE,
-      name: debouncedUserSearch || undefined,
+      name: userSearch || undefined,
     },
     isManagerStep,
   );
@@ -137,6 +134,7 @@ export function AssignManagersDialog({
     : undefined;
 
   const resetState = () => {
+    setSearchSession((current) => current + 1);
     setStep(0);
     setEventSearch("");
     setEventPageIndex(0);
@@ -465,6 +463,7 @@ export function AssignManagersDialog({
                       <Field.Root>
                         <Field.Label>Buscar evento</Field.Label>
                         <SearchInput
+                          key={searchSession}
                           onSearchChange={handleEventSearchChange}
                           placeholder="Buscar por nombre"
                         />
@@ -498,7 +497,8 @@ export function AssignManagersDialog({
                         <PaginationControl
                           isFetching={eventsQuery.isFetching}
                           itemLabel="eventos"
-                          onPageChange={setEventPageIndex}
+                          onPageChange={(page) => setEventPageIndex(page - 1)}
+                          page={eventPageIndex + 1}
                           pagination={eventsPagination}
                         />
                       </Box>
@@ -511,6 +511,7 @@ export function AssignManagersDialog({
                       <Field.Root>
                         <Field.Label>Buscar manager</Field.Label>
                         <SearchInput
+                          key={searchSession}
                           onSearchChange={handleUserSearchChange}
                           placeholder="Buscar manager por nombre"
                         />
@@ -548,7 +549,8 @@ export function AssignManagersDialog({
                         <PaginationControl
                           isFetching={dialogUsersQuery.isFetching}
                           itemLabel="managers"
-                          onPageChange={setUserPageIndex}
+                          onPageChange={(page) => setUserPageIndex(page - 1)}
+                          page={userPageIndex + 1}
                           pagination={usersPagination}
                         />
                       </Box>

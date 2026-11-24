@@ -27,6 +27,7 @@ export function ManagersTable({
   errorMessage,
   onRetry,
   pagination,
+  pageIndex,
   onPageChange,
   onViewDetails,
 }: ManagersTableProps) {
@@ -82,6 +83,7 @@ export function ManagersTable({
         isFetching={isFetching}
         itemLabel="managers"
         onPageChange={onPageChange}
+        page={pageIndex}
         pagination={pagination}
       />
     </Box>

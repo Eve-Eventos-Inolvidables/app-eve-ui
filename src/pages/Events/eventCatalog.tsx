@@ -1,188 +1,77 @@
 import {
+  Badge,
   Box,
   Button,
   Field,
   Flex,
   Heading,
-  Input,
-  InputGroup,
   SimpleGrid,
   Spinner,
   Stack,
   Text,
 } from "@chakra-ui/react";
-import {
-  ArrowRight,
-  Badge,
-  CalendarDays,
-  ChevronLeft,
-  ChevronRight,
-  Search,
-} from "lucide-react";
-import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-
+import { useState } from "react";
+import { EventCard } from "../../components/events/EventCard";
+import { PaginationControl } from "../../components/ui/PaginationControl";
+import { SearchInput } from "../../components/ui/SearchInput";
 import {
   useEventByIdQuery,
   useEventsQuery,
 } from "../../queries/events.queries";
 import { getErrorMessage } from "../../utils/error";
-import type { SimpleEventDto } from "../../types/event.types";
-import { getSafeEventColor, getTodayDateValue, formatEventDate } from "../../utils/eventFormatting";
+import { getTodayDateValue } from "../../utils/eventFormatting";
 
 const PAGE_SIZE = 9;
 
 type EventGroup = "active" | "past";
 
-function EventCard({ event }: { event: SimpleEventDto }) {
-  const navigate = useNavigate();
-  const primaryColor = getSafeEventColor(event.primaryColor, "#10B981");
-  const isPast = event.date < getTodayDateValue();
-
-  return (
-    <Box
-      _hover={{ borderColor: "brand.muted", shadow: "lg", transform: "translateY(-2px)" }}
-      bg="bg.panel"
-      borderColor="border"
-      borderRadius="xl"
-      borderWidth="1px"
-      display="flex"
-      flexDirection="column"
-      minW="0"
-      overflow="hidden"
-      shadow="sm"
-      style={{ transition: "transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease" }}
-    >
-      <Box
-        h="1.5"
-        style={
-          isPast
-            ? undefined
-            : { backgroundColor: primaryColor }
-        }
-        bg={isPast ? "bg.emphasized" : undefined}
-      />
-
-      <Stack flex="1" gap="4" p="5">
-        <Flex align="flex-start" justify="space-between" gap="3">
-          <Flex
-            align="center"
-            bg="bg.subtle"
-            borderColor="border"
-            borderRadius="lg"
-            borderWidth="1px"
-            direction="column"
-            flexShrink={0}
-            h="14"
-            justify="center"
-            w="14"
-          >
-            <Text fontSize="lg" fontWeight="extrabold" lineHeight="1">
-              {day}
-            </Text>
-            <Text
-              color="fg.muted"
-              fontSize="2xs"
-              fontWeight="semibold"
-              letterSpacing="wide"
-              mt="1"
-            >
-              {month}
-            </Text>
-          </Flex>
-
-          <Badge
-            colorPalette={isPast ? "gray" : "brand"}
-            flexShrink={0}
-            variant="subtle"
-          >
-            {isPast ? "Finalizado" : "Próximo evento"}
-          </Badge>
-        </Flex>
-
-        <Box>
-          <Heading color="fg" lineClamp={2} size="md">
-            {event.name}
-          </Heading>
-          <Flex align="center" color="fg.muted" gap="2" mt="3">
-            <CalendarDays aria-hidden="true" size={16} />
-            <Text fontSize="sm">
-              {formatEventDate(event.date, { dateStyle: "medium" })}
-              {event.kickOffTime ? ` · ${event.kickOffTime.slice(0, 5)}` : ""}
-            </Text>
-          </Flex>
-        </Box>
-
-        <Text color="fg.muted" flex="1" lineClamp={3} minH="3.75rem">
-          {event.description?.trim() ||
-            "Consulta los sectores y precios de este evento."}
-        </Text>
-
-        <Button
-          colorPalette="brand"
-          onClick={() => navigate(`/events/${event.id}`)}
-          w="full"
-        >
-          Ver sectores y precios
-          <ArrowRight />
-        </Button>
-      </Stack>
-    </Box>
-  );
-}
-
 export default function EventCatalog() {
   const today = getTodayDateValue();
   const [activeGroup, setActiveGroup] = useState<EventGroup>("active");
   const [search, setSearch] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [activePage, setActivePage] = useState(1);
   const [pastPage, setPastPage] = useState(1);
 
-  useEffect(() => {
-    const timeout = window.setTimeout(() => {
-      setDebouncedSearch(search.trim());
-      setActivePage(1);
-      setPastPage(1);
-    }, SEARCH_DEBOUNCE_MS);
+  const handleSearchChange = (value: string) => {
+    setSearch(value);
+    setActivePage(1);
+    setPastPage(1);
+  };
 
-    return () => window.clearTimeout(timeout);
-  }, [search]);
-
-  const isIdSearch = /^\d+$/.test(searchTerm);
-  const parsedId = isIdSearch ? Number(searchTerm) : undefined;
+  const isIdSearch = /^\d+$/.test(search);
+  const parsedId = isIdSearch ? Number(search) : undefined;
   const validIdSearch =
-    parsedId !== undefined &&
-    Number.isSafeInteger(parsedId) &&
-    parsedId > 0;
+    parsedId !== undefined && Number.isSafeInteger(parsedId) && parsedId > 0;
 
+  // Both groups are queried so the tab badges show real totals.
   const activeEventsQuery = useEventsQuery(
     {
       page: activePage,
       size: PAGE_SIZE,
-      name: debouncedSearch || undefined,
+      name: search || undefined,
       dateFrom: today,
       sort: "date,asc",
     },
-    activeGroup === "active" && !isIdSearch,
+    !isIdSearch,
   );
   const pastEventsQuery = useEventsQuery(
     {
       page: pastPage,
       size: PAGE_SIZE,
-      name: debouncedSearch || undefined,
+      name: search || undefined,
       dateBefore: today,
       sort: "date,desc",
     },
-    activeGroup === "past" && !isIdSearch,
+    !isIdSearch,
   );
-  const eventByIdQuery = useEventByIdQuery(
-    validIdSearch ? parsedId : 0,
-    validIdSearch,
-  );
+  const eventByIdQuery = useEventByIdQuery(parsedId ?? 0, validIdSearch);
 
-  const selectedListQuery =
+  const selectedQuery =
     activeGroup === "active" ? activeEventsQuery : pastEventsQuery;
+  const currentPage = activeGroup === "active" ? activePage : pastPage;
+  const groupLabel = activeGroup === "active" ? "Activos" : "Pasados";
+
+  // An ID search only shows the event when it belongs to the selected group.
   const foundEvent = validIdSearch ? eventByIdQuery.data : undefined;
   const foundEventMatchesGroup = foundEvent
     ? activeGroup === "active"
@@ -190,27 +79,21 @@ export default function EventCatalog() {
       : foundEvent.date < today
     : false;
   const pagedEvents =
-    selectedListQuery.data?.data?.filter((event) => !event.archived) ?? [];
+    selectedQuery.data?.data?.filter((event) => !event.archived) ?? [];
   const events = isIdSearch
     ? foundEvent && foundEventMatchesGroup && !foundEvent.archived
       ? [foundEvent]
       : []
     : pagedEvents;
-  const pagination = selectedListQuery.data?.pagination;
-  const totalPages = Math.max(pagination?.totalPages ?? 1, 1);
-  const currentPage = pagination?.page ?? (
-    activeGroup === "active" ? activePage : pastPage
-  );
+  const pagination = selectedQuery.data?.pagination;
+
   const isLoading = isIdSearch
     ? validIdSearch && eventByIdQuery.isPending
-    : selectedListQuery.isPending;
-  const queryError = isIdSearch
-    ? eventByIdQuery.error
-    : selectedListQuery.error;
+    : selectedQuery.isPending;
   const isError = isIdSearch
     ? validIdSearch && eventByIdQuery.isError
-    : selectedListQuery.isError;
-  const groupLabel = activeGroup === "active" ? "Activos" : "Pasados";
+    : selectedQuery.isError;
+  const queryError = isIdSearch ? eventByIdQuery.error : selectedQuery.error;
 
   const goToPage = (nextPage: number) => {
     if (activeGroup === "active") {
@@ -235,7 +118,7 @@ export default function EventCatalog() {
       return "No se encontró un evento con ese ID.";
     }
 
-    if (debouncedSearch) {
+    if (search) {
       return `No hay eventos ${groupLabel.toLowerCase()} que coincidan con la búsqueda.`;
     }
 
@@ -255,12 +138,7 @@ export default function EventCatalog() {
         </Text>
       </Box>
 
-      <Flex
-        aria-label="Categorías de eventos"
-        as="nav"
-        gap="2"
-        role="group"
-      >
+      <Flex aria-label="Categorías de eventos" as="nav" gap="2" role="group">
         <Button
           aria-pressed={activeGroup === "active"}
           onClick={() => setActiveGroup("active")}
@@ -295,19 +173,12 @@ export default function EventCatalog() {
         </Button>
       </Flex>
 
-      <Field.Root>
-        <Field.Label htmlFor="event-search">Buscar eventos</Field.Label>
-        <InputGroup
-          maxW={{ base: "full", md: "xl" }}
-          startElement={<Search aria-hidden="true" size={16} />}
-        >
-          <Input
-            id="event-search"
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder="Buscar por nombre o ID"
-            value={search}
-          />
-        </InputGroup>
+      <Field.Root maxW={{ base: "full", md: "xl" }}>
+        <Field.Label>Buscar eventos</Field.Label>
+        <SearchInput
+          onSearchChange={handleSearchChange}
+          placeholder="Buscar por nombre o ID"
+        />
         <Field.HelperText>
           La búsqueda por nombre respeta la categoría seleccionada.
         </Field.HelperText>
@@ -322,9 +193,9 @@ export default function EventCatalog() {
         <Heading color="fg" size="lg">
           Eventos {groupLabel.toLowerCase()}
         </Heading>
-        {!isIdSearch && pagination && (
+        {!isIdSearch && (
           <Text color="fg.muted" fontSize="sm">
-            {pagination.totalItems} eventos · ordenados por fecha{" "}
+            Ordenados por fecha{" "}
             {activeGroup === "active"
               ? "del más próximo al más lejano"
               : "del más reciente al más antiguo"}
@@ -350,16 +221,13 @@ export default function EventCatalog() {
         >
           <Stack align="center" gap="3">
             <Text color="fg.error">
-              {getErrorMessage(
-                queryError,
-                "No se pudieron cargar los eventos.",
-              )}
+              {getErrorMessage(queryError, "No se pudieron cargar los eventos.")}
             </Text>
             <Button
               onClick={() =>
                 isIdSearch
                   ? void eventByIdQuery.refetch()
-                  : void selectedListQuery.refetch()
+                  : void selectedQuery.refetch()
               }
               size="sm"
               variant="outline"
@@ -395,39 +263,21 @@ export default function EventCatalog() {
           </SimpleGrid>
 
           {!isIdSearch && (
-            <Flex
-              align={{ base: "stretch", sm: "center" }}
-              direction={{ base: "column", sm: "row" }}
-              gap="3"
-              justify="space-between"
+            <Box
+              bg="bg.panel"
+              borderColor="border"
+              borderRadius="xl"
+              borderWidth="1px"
+              overflow="hidden"
             >
-              <Text color="fg.muted" fontSize="sm">
-                Página {currentPage} de {totalPages} ·{" "}
-                {pagination?.totalItems ?? events.length} eventos
-              </Text>
-              <Flex gap="2" justify={{ base: "flex-end", sm: "initial" }}>
-                <Button
-                  disabled={currentPage <= 1 || selectedListQuery.isFetching}
-                  onClick={() => goToPage(Math.max(currentPage - 1, 1))}
-                  size="sm"
-                  variant="outline"
-                >
-                  <ChevronLeft /> Anterior
-                </Button>
-                <Button
-                  disabled={
-                    currentPage >= totalPages || selectedListQuery.isFetching
-                  }
-                  onClick={() =>
-                    goToPage(Math.min(currentPage + 1, totalPages))
-                  }
-                  size="sm"
-                  variant="outline"
-                >
-                  Siguiente <ChevronRight />
-                </Button>
-              </Flex>
-            </Flex>
+              <PaginationControl
+                isFetching={selectedQuery.isFetching}
+                itemLabel="eventos"
+                onPageChange={goToPage}
+                page={currentPage}
+                pagination={pagination}
+              />
+            </Box>
           )}
         </>
       )}
