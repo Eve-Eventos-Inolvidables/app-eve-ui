@@ -5,8 +5,6 @@ import {
   Field,
   Flex,
   Heading,
-  Input,
-  InputGroup,
   SimpleGrid,
   Spinner,
   Stack,
@@ -20,6 +18,8 @@ import {
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { PaginationControl } from "../../components/ui/PaginationControl";
+import { SearchInput } from "../../components/ui/SearchInput";
 import {
   useEventByIdQuery,
   useEventsQuery,
@@ -33,7 +33,6 @@ import {
 import { getErrorMessage } from "../../utils/error";
 
 const PAGE_SIZE = 9;
-const SEARCH_DEBOUNCE_MS = 350;
 
 type EventGroup = "active" | "past";
 
@@ -44,23 +43,63 @@ function EventCard({ event }: { event: SimpleEventDto }) {
 
   return (
     <Box
+      _hover={{ borderColor: "brand.muted", shadow: "lg", transform: "translateY(-2px)" }}
       bg="bg.panel"
       borderColor="border"
       borderRadius="xl"
-      borderTopWidth="4px"
+      borderWidth="1px"
+      display="flex"
+      flexDirection="column"
       minW="0"
-      p="5"
+      overflow="hidden"
       shadow="sm"
-      style={{ borderTopColor: primaryColor }}
+      style={{ transition: "transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease" }}
     >
-      <Stack gap="4" h="full">
-        <Flex align="center" justify="space-between" gap="3">
-          <Badge colorPalette={isPast ? "gray" : "brand"} variant="subtle">
+      <Box
+        h="1.5"
+        style={
+          isPast
+            ? undefined
+            : { backgroundColor: primaryColor }
+        }
+        bg={isPast ? "bg.emphasized" : undefined}
+      />
+
+      <Stack flex="1" gap="4" p="5">
+        <Flex align="flex-start" justify="space-between" gap="3">
+          <Flex
+            align="center"
+            bg="bg.subtle"
+            borderColor="border"
+            borderRadius="lg"
+            borderWidth="1px"
+            direction="column"
+            flexShrink={0}
+            h="14"
+            justify="center"
+            w="14"
+          >
+            <Text fontSize="lg" fontWeight="extrabold" lineHeight="1">
+              {day}
+            </Text>
+            <Text
+              color="fg.muted"
+              fontSize="2xs"
+              fontWeight="semibold"
+              letterSpacing="wide"
+              mt="1"
+            >
+              {month}
+            </Text>
+          </Flex>
+
+          <Badge
+            colorPalette={isPast ? "gray" : "brand"}
+            flexShrink={0}
+            variant="subtle"
+          >
             {isPast ? "Finalizado" : "Próximo evento"}
           </Badge>
-          <Text color="fg.muted" fontSize="xs">
-            #{event.id}
-          </Text>
         </Flex>
 
         <Box>
@@ -84,10 +123,10 @@ function EventCard({ event }: { event: SimpleEventDto }) {
         <Button
           colorPalette="brand"
           onClick={() => navigate(`/events/${event.id}`)}
-          variant="outline"
           w="full"
         >
           Ver sectores y precios
+          <ArrowRight />
         </Button>
       </Stack>
     </Box>
@@ -112,8 +151,8 @@ export default function EventCatalog() {
     return () => window.clearTimeout(timeout);
   }, [search]);
 
-  const isIdSearch = /^\d+$/.test(debouncedSearch);
-  const parsedId = isIdSearch ? Number(debouncedSearch) : undefined;
+  const isIdSearch = /^\d+$/.test(searchTerm);
+  const parsedId = isIdSearch ? Number(searchTerm) : undefined;
   const validIdSearch =
     parsedId !== undefined &&
     Number.isSafeInteger(parsedId) &&
@@ -351,7 +390,7 @@ export default function EventCatalog() {
 
       {!isLoading && !isError && events.length > 0 && (
         <>
-          <SimpleGrid columns={{ base: 1, md: 2, xl: 3 }} gap="5">
+          <SimpleGrid columns={{ base: 1, md: 2, xl: 3 }} gap="6">
             {events.map((event) => (
               <EventCard event={event} key={event.id} />
             ))}

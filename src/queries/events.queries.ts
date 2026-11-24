@@ -21,8 +21,8 @@ import type {
   BatchDto,
   CreateEventRequest,
   SectorByBatchDto,
-  SectorDto,
-  SimpleEventDto,
+  SectorDto
+ 
 } from "../types/event.types";
 import type { GetEventsRequest, PagedRequest } from "../types/request";
 import type { ApiErrorResponse } from "../types/responses";

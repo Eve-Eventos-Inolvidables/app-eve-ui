@@ -11,6 +11,8 @@ import type { Pagination as PaginationType } from "../../types/responses";
 
 interface PaginationControlProps {
   pagination?: PaginationType | null;
+  /** Página actual (1-based). Si se envía, el componente queda controlado por el padre. */
+  page?: number;
   onPageChange?: (page: number) => void;
   isFetching?: boolean;
   itemLabel?: string;
@@ -20,6 +22,7 @@ interface PaginationControlProps {
 
 export function PaginationControl({
   pagination,
+  page,
   onPageChange,
   isFetching = false,
   itemLabel = "registros",
@@ -32,14 +35,20 @@ export function PaginationControl({
 
   const [internalPage, setInternalPage] = useState(1);
 
-  const currentPage = Math.min(Math.max(internalPage, 1), totalPages);
+  const isControlled = page !== undefined;
+  const currentPage = Math.min(
+    Math.max(isControlled ? page : internalPage, 1),
+    totalPages,
+  );
 
   if (totalItems === 0) {
     return null;
   }
 
   const handlePageChange = (newPage: number) => {
-    setInternalPage(newPage);
+    if (!isControlled) {
+      setInternalPage(newPage);
+    }
     onPageChange?.(newPage);
   };
 
