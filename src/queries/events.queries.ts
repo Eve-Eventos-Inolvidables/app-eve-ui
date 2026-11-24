@@ -61,8 +61,8 @@ export function useEventsQuery(
 }
 
  
-export function useEventByIdQuery(id: number, enabled = true) {
-  return useQuery({
+export function eventByIdQueryOptions(id: number) {
+  return {
     queryKey: eventKeys.detail(id),
     queryFn: async () => {
       const response = await getEventById(id);
@@ -73,6 +73,12 @@ export function useEventByIdQuery(id: number, enabled = true) {
 
       return response.data;
     },
+  };
+}
+
+export function useEventByIdQuery(id: number, enabled = true) {
+  return useQuery({
+    ...eventByIdQueryOptions(id),
     enabled: enabled && Number.isInteger(id) && id > 0,
   });
 }

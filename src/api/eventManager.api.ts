@@ -21,4 +21,5 @@ export const eventManagerApi = {
     delete: (id: number) => apiClient.delete<ApiErrorResponse | void>(MANAGER_URL + `/api/managers/${id}`).then(res => res.data),
     getManagersByEventId: (eventId: number, params: PagedRequest = {}) => apiClient.get<ApiPagedResponse<EventManager[]>>(MANAGER_URL + `/api/managers/by-event/${eventId}`, { params }).then(res => res.data),    
     getManagersByManagerId: (managerId: number) => apiClient.get<ApiResponse<EventManager[]>>(MANAGER_URL + `/api/managers/by-manager/${managerId}`).then(res => res.data),
+    getMyEvents: () => apiClient.get<ApiResponse<number[]>>(MANAGER_URL + `/api/managers/myEvents`).then(res => res.data),
 }

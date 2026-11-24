@@ -22,6 +22,7 @@ export const eventManagerKeys = {
     [...eventManagerKeys.all, "byManagerId", managerId] as const,
   byEventId: (eventId: number, params: PagedRequest = {}) =>
     [...eventManagerKeys.all, "byEventId", eventId, params] as const,
+  myEvents: () => [...eventManagerKeys.all, "myEvents"] as const,
 };
 
 export function useGetEventManagers(params: PagedRequest = {}) {
@@ -49,6 +50,13 @@ export function useGetEventManagersByEventId(
     queryKey: eventManagerKeys.byEventId(eventId, params),
     queryFn: () => eventManagerApi.getManagersByEventId(eventId, params),
     enabled: enabled && Number.isInteger(eventId) && eventId > 0,
+  });
+}
+
+export function useGetMyEvents() {
+  return useQuery({
+    queryKey: eventManagerKeys.myEvents(),
+    queryFn: () => eventManagerApi.getMyEvents(),
   });
 }
 

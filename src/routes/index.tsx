@@ -3,6 +3,7 @@ import { AppLayout } from "../layouts/AppLayout";
 import { AuthLayout } from "../layouts/AuthLayout";
 import { ProtectedRoute } from "./guard/ProtectedRoute";
 import { PublicRoute } from "./guard/PublicRoute";
+import { RequireManager } from "./guard/RequireManager";
 import { RequirePermission } from "./guard/RequirePermission";
 import { RoleHomeRedirect } from "./guard/RoleHomeRedirect";
 import NotFound from "../pages/notFound";
@@ -14,6 +15,7 @@ import {
   EventsCatalog,
   EventManagers,
   Login,
+  ManagerDashboard,
   Register,
   UserManagement,
 } from "./lazyPages";
@@ -45,6 +47,10 @@ export const router = createBrowserRouter([
           { path: "/events", element: <EventsCatalog /> },
           { path: "/events/:eventId", element: <EventDetails /> },
           { path: "/dash", element: <Dashboard /> },
+          {
+            element: <RequireManager />,
+            children: [{ path: "/manager", element: <ManagerDashboard /> }],
+          },
           {
             element: <RequirePermission />,
             children: [
