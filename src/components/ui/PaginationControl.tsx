@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   ButtonGroup,
   Flex,
@@ -10,9 +11,8 @@ import type { Pagination as PaginationType } from "../../types/responses";
 
 interface PaginationControlProps {
   pagination?: PaginationType | null;
-  /** Página actual, 1-based (el backend es 1-based). El padre es dueño del estado. */
-  page: number;
-  onPageChange: (page: number) => void;
+  page?: number;
+  onPageChange?: (page: number) => void;
   isFetching?: boolean;
   itemLabel?: string;
   showSummary?: boolean;
@@ -32,16 +32,29 @@ export function PaginationControl({
   const totalPages = Math.max(pagination?.totalPages ?? 0, 1);
   const pageSize = pagination?.size ?? 10;
 
-  const currentPage = Math.min(Math.max(page, 1), totalPages);
+  const [internalPage, setInternalPage] = useState(1);
+
+  const isControlled = page !== undefined;
+  const currentPage = Math.min(
+    Math.max(isControlled ? page : internalPage, 1),
+    totalPages,
+  );
 
   if (totalItems === 0) {
     return null;
   }
 
+  const handlePageChange = (newPage: number) => {
+    if (!isControlled) {
+      setInternalPage(newPage);
+    }
+    onPageChange?.(newPage);
+  };
+
   return (
     <Pagination.Root
       count={totalItems}
-      onPageChange={({ page: newPage }) => onPageChange(newPage)}
+      onPageChange={({ page: newPage }) => handlePageChange(newPage)}
       page={currentPage}
       pageSize={pageSize}
     >
