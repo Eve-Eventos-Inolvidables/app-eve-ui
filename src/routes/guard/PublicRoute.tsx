@@ -5,9 +5,15 @@ import { getLandingPath } from "../../utils/roleNavigation";
 export const PublicRoute = () => {
   const token = useAuthStore((state) => state.token);
   const user = useAuthStore((state) => state.user);
-  return token ? (
-    <Navigate to={getLandingPath(user?.roleName)} replace />
-  ) : (
-    <Outlet />
-  );
+  const onboardingPending = useAuthStore((state) => state.onboardingPending);
+
+  if (!token) {
+    return <Outlet />;
+  }
+
+  const target = onboardingPending
+    ? "/onboarding/interests"
+    : getLandingPath(user?.roleName);
+
+  return <Navigate to={target} replace />;
 };

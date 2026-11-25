@@ -16,11 +16,21 @@ const envSchema = z.object({
     .trim()
     .min(1, "VITE_EVENT_URL es obligatoria.")
     .default("/app-eve-ms-events"),
+  VITE_INTEREST_URL: z
+    .string()
+    .trim()
+    .min(1, "VITE_INTEREST_URL es obligatoria.")
+    .default("/app-eve-ms-userinterests"),
   VITE_MANAGER_URL: z
     .string()
     .trim()
     .min(1, "VITE_MANAGER_URL es obligatoria.")
     .default("/app-eve-ms-users"),
+  VITE_SALES_URL: z
+    .string()
+    .trim()
+    .min(1, "VITE_SALES_URL es obligatoria.")
+    .default("/app-eve-ms-sales"),
 });
 
 const parsed = envSchema.safeParse(import.meta.env);
@@ -37,5 +47,7 @@ export const env = {
   apiUrl: parsed.data.VITE_API_URL,
   authUrl: parsed.data.VITE_AUTH_URL,
   eventUrl: parsed.data.VITE_EVENT_URL,
+  interestUrl: parsed.data.VITE_INTEREST_URL,
   managerUrl: parsed.data.VITE_MANAGER_URL,
+  salesUrl: parsed.data.VITE_SALES_URL,
 } as const;

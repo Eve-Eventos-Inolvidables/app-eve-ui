@@ -4,5 +4,11 @@ import { getLandingPath } from "../../utils/roleNavigation";
 
 export function RoleHomeRedirect() {
   const user = useAuthStore((state) => state.user);
-  return <Navigate to={getLandingPath(user?.roleName)} replace />;
+  const onboardingPending = useAuthStore((state) => state.onboardingPending);
+
+  const target = onboardingPending
+    ? "/onboarding/interests"
+    : getLandingPath(user?.roleName);
+
+  return <Navigate to={target} replace />;
 }

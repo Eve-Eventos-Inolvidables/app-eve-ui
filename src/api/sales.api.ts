@@ -1,4 +1,5 @@
 import { SALES_URL } from "../constants/ms";
+import type { PagedSortedRequest } from "../types/request";
 import type { ApiPagedResponse, ApiResponse } from "../types/responses";
 import type {
   BuyDto,
@@ -14,6 +15,16 @@ export async function createBuy(
   const { data } = await apiClient.post<ApiResponse<BuyDto>>(
     `${SALES_URL}/api/buys`,
     payload,
+  );
+  return data;
+}
+
+export async function getBuys(
+  params: PagedSortedRequest,
+): Promise<ApiPagedResponse<BuyDto[]>> {
+  const { data } = await apiClient.get<ApiPagedResponse<BuyDto[]>>(
+    `${SALES_URL}/api/buys`,
+    { params },
   );
   return data;
 }

@@ -16,7 +16,9 @@ import {
   EventManagers,
   Login,
   ManagerDashboard,
+  Profile,
   Register,
+  SelectInterests,
   UserManagement,
 } from "./lazyPages";
 
@@ -47,6 +49,8 @@ export const router = createBrowserRouter([
           { path: "/events", element: <EventsCatalog /> },
           { path: "/events/:eventId", element: <EventDetails /> },
           { path: "/dash", element: <Dashboard /> },
+          { path: "/profile", element: <Profile /> },
+          { path: "/onboarding/interests", element: <SelectInterests /> },
           {
             element: <RequireManager />,
             children: [{ path: "/manager", element: <ManagerDashboard /> }],

@@ -6,16 +6,19 @@ import { Link as RouterLink, useNavigate } from "react-router-dom";
 import { AuthCard } from "../components/auth/AuthCard";
 import { toaster } from "../components/ui/chakra-base/toaster-instance";
 import { useRegisterMutation } from "../queries/auth.queries";
+import { useAuthStore } from "../stores/auth.store";
 import {
   registerSchema,
   type RegisterFormValues,
 } from "../schemas/auth.schema";
 import { getErrorMessage } from "../utils/error";
-import { getLandingPath } from "../utils/roleNavigation";
 
 export default function Register() {
   const navigate = useNavigate();
   const registerMutation = useRegisterMutation();
+  const setOnboardingPending = useAuthStore(
+    (state) => state.setOnboardingPending,
+  );
   const {
     register,
     handleSubmit,
@@ -26,16 +29,18 @@ export default function Register() {
   });
 
   const onSubmit = handleSubmit((values) => {
+    setOnboardingPending(true);
     registerMutation.mutate(values, {
-      onSuccess: ({ user }) => {
+      onSuccess: () => {
         toaster.create({
           title: "Cuenta creada",
           description: "Tu cuenta fue creada e iniciaste sesión",
           type: "success",
         });
-        navigate(getLandingPath(user.roleName), { replace: true });
+        navigate("/onboarding/interests", { replace: true });
       },
       onError: (error) => {
+        setOnboardingPending(false);
         toaster.create({
           title: "No se pudo crear la cuenta",
           description: getErrorMessage(error),
