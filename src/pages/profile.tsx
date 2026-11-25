@@ -9,16 +9,24 @@ import {
   Stack,
   Text,
 } from "@chakra-ui/react";
-import { ArrowRight, Clock, Ticket } from "lucide-react";
+import { ArrowRight, ChevronDown, ChevronUp, Clock, Ticket } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Link, Navigate, useNavigate } from "react-router-dom";
+import {
+  getTicketLocation,
+  TicketQrCard,
+} from "../components/tickets/TicketQrCard";
 import { EmptyState } from "../components/ui/EmptyState";
 import { PaginationControl } from "../components/ui/PaginationControl";
 import { useAllEventCategoriesQuery } from "../queries/eventCategory.queries";
-import { useAllEventsQuery } from "../queries/events.queries";
+import {
+  useAllEventsQuery,
+  useEventCatalogStructureQuery,
+} from "../queries/events.queries";
 import {
   useBuysQuery,
   useTicketCountByBuyQuery,
+  useTicketsByBuyQuery,
 } from "../queries/sales.queries";
 import { useUserInterestsQuery } from "../queries/userInterest.queries";
 import { useAuthStore } from "../stores/auth.store";
@@ -55,7 +63,11 @@ function PurchaseRow({
   eventName: string;
   eventDate?: string;
 }) {
-  const ticketsQuery = useTicketCountByBuyQuery(buy.id);
+  const [isOpen, setIsOpen] = useState(false);
+  const countQuery = useTicketCountByBuyQuery(buy.id);
+  const ticketsQuery = useTicketsByBuyQuery(buy.id, isOpen);
+  const catalogQuery = useEventCatalogStructureQuery(buy.eventId, isOpen);
+  const ticketsRegionId = `purchase-${buy.id}-tickets`;
 
   return (
     <Box
@@ -92,13 +104,13 @@ function PurchaseRow({
           <Text color="fg" fontWeight="medium">
             Total: {formatPrice(buy.total)}
           </Text>
-          {ticketsQuery.isPending ? (
+          {countQuery.isPending ? (
             <Text color="fg.muted" fontSize="sm">
               Cargando entradas...
             </Text>
-          ) : ticketsQuery.isError ? (
+          ) : countQuery.isError ? (
             <Button
-              onClick={() => void ticketsQuery.refetch()}
+              onClick={() => void countQuery.refetch()}
               size="xs"
               variant="ghost"
             >
@@ -106,17 +118,124 @@ function PurchaseRow({
             </Button>
           ) : (
             <Text color="fg.muted" fontSize="sm">
-              {ticketsQuery.data ?? 0}{" "}
-              {ticketsQuery.data === 1 ? "entrada" : "entradas"}
+              {countQuery.data ?? 0}{" "}
+              {countQuery.data === 1 ? "entrada" : "entradas"}
             </Text>
           )}
         </Stack>
-        <Button asChild size="sm" variant="outline">
-          <Link to={`/events/${buy.eventId}`}>
-            Ver evento <ArrowRight />
-          </Link>
-        </Button>
+        <Flex gap="2" wrap="wrap">
+          <Button
+            aria-controls={ticketsRegionId}
+            aria-expanded={isOpen}
+            onClick={() => setIsOpen((open) => !open)}
+            size="sm"
+            variant="outline"
+          >
+            {isOpen ? "Ocultar entradas" : "Ver entradas"}
+            {isOpen ? (
+              <ChevronUp aria-hidden="true" size={16} />
+            ) : (
+              <ChevronDown aria-hidden="true" size={16} />
+            )}
+          </Button>
+          <Button asChild size="sm" variant="outline">
+            <Link to={`/events/${buy.eventId}`}>
+              Ver evento <ArrowRight />
+            </Link>
+          </Button>
+        </Flex>
       </Flex>
+
+      {isOpen && (
+        <Stack
+          aria-live="polite"
+          borderColor="border"
+          borderTopWidth="1px"
+          gap="3"
+          id={ticketsRegionId}
+          mt="4"
+          pt="4"
+        >
+          {ticketsQuery.isPending && (
+            <Flex align="center" color="fg.muted" gap="3">
+              <Spinner size="sm" />
+              Cargando tus entradas...
+            </Flex>
+          )}
+
+          {ticketsQuery.isError && (
+            <Stack align="flex-start" gap="2">
+              <Text color="fg.error" fontSize="sm">
+                {getErrorMessage(
+                  ticketsQuery.error,
+                  "No se pudieron cargar las entradas de esta compra.",
+                )}
+              </Text>
+              <Button
+                onClick={() => void ticketsQuery.refetch()}
+                size="sm"
+                variant="outline"
+              >
+                Reintentar carga de entradas
+              </Button>
+            </Stack>
+          )}
+
+          {ticketsQuery.isSuccess && ticketsQuery.data.length === 0 && (
+            <Stack align="flex-start" gap="2">
+              <Text color="fg.muted" fontSize="sm">
+                Esta compra todavía no tiene entradas disponibles.
+              </Text>
+              <Button
+                onClick={() => void ticketsQuery.refetch()}
+                size="sm"
+                variant="outline"
+              >
+                Consultar entradas
+              </Button>
+            </Stack>
+          )}
+
+          {ticketsQuery.isSuccess && ticketsQuery.data.length > 0 && (
+            <>
+              {catalogQuery.isError && (
+                <Flex align="center" gap="3" wrap="wrap">
+                  <Text color="fg.muted" fontSize="sm">
+                    No se pudo identificar el sector y la tanda. El código QR
+                    sigue disponible.
+                  </Text>
+                  <Button
+                    onClick={() => void catalogQuery.refetch()}
+                    size="xs"
+                    variant="ghost"
+                  >
+                    Reintentar
+                  </Button>
+                </Flex>
+              )}
+              <SimpleGrid columns={{ base: 1, sm: 2, lg: 3 }} gap="4">
+                {ticketsQuery.data.map((ticket, index) => {
+                  const location = getTicketLocation(
+                    catalogQuery.data,
+                    ticket.sectorByBatchId,
+                  );
+
+                  return (
+                    <TicketQrCard
+                      batchName={location.batchName}
+                      eventName={eventName}
+                      index={index}
+                      key={ticket.id}
+                      qrToken={ticket.qrToken}
+                      sectorName={location.sectorName}
+                    />
+                  );
+                })}
+              </SimpleGrid>
+            </>
+          )}
+        </Stack>
+      )}
     </Box>
   );
 }

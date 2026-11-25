@@ -12,8 +12,8 @@ import {
   Stack,
   Text,
 } from "@chakra-ui/react";
-import { QRCodeSVG } from "qrcode.react";
 import { ArrowLeft, MapPin, Minus, Plus, Ticket } from "lucide-react";
+import { TicketQrCard } from "../../components/tickets/TicketQrCard";
 import axios from "axios";
 import { useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
@@ -1041,47 +1041,14 @@ export default function EventDetails() {
                   );
 
                   return (
-                    <Box
-                      alignItems="center"
-                      bg="bg"
-                      borderColor="border"
-                      borderRadius="lg"
-                      borderWidth="1px"
-                      display="flex"
-                      flexDirection="column"
-                      gap="3"
+                    <TicketQrCard
+                      batchName={details?.batchName}
+                      eventName={event?.name}
+                      index={index}
                       key={ticket.id}
-                      p="4"
-                      textAlign="center"
-                    >
-                      <Text color="fg" fontWeight="semibold">
-                        Entrada {index + 1}
-                      </Text>
-                      <Text color="fg.muted" fontSize="sm">
-                        {details
-                          ? `${details.sectorName} · ${details.batchName}`
-                          : "Sector y tanda"}
-                      </Text>
-                      {ticket.qrToken ? (
-                        <Box
-                          aria-label={`Código QR de la entrada ${index + 1}`}
-                          bg="white"
-                          p="2"
-                          role="img"
-                        >
-                          <QRCodeSVG
-                            includeMargin
-                            level="M"
-                            size={160}
-                            value={ticket.qrToken}
-                          />
-                        </Box>
-                      ) : (
-                        <Text color="fg.error" fontSize="sm">
-                          Esta entrada no tiene un código QR disponible.
-                        </Text>
-                      )}
-                    </Box>
+                      qrToken={ticket.qrToken}
+                      sectorName={details?.sectorName}
+                    />
                   );
                 })}
               </SimpleGrid>
