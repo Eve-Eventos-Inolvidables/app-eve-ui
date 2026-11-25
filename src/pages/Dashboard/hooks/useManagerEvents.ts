@@ -36,15 +36,11 @@ export function useManagerEvents(): ManagerEvents {
     queries: eventIds.map((id) => eventByIdQueryOptions(id)),
   });
 
-  const events = useMemo(
-    () =>
-      eventQueries
-        .map((query) => query.data)
-        .filter(
-          (event): event is SimpleEventDto => Boolean(event) && !event?.archived,
-        ),
-    [eventQueries],
-  );
+  const events = eventQueries
+    .map((query) => query.data)
+    .filter(
+      (event): event is SimpleEventDto => Boolean(event) && !event?.archived,
+    );
 
   const today = getTodayDateValue();
   const upcoming = events
