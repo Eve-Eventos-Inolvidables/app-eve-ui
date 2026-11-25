@@ -1,4 +1,5 @@
-import {
+﻿import {
+  Badge,
   Box,
   Button,
   Checkbox,
@@ -27,9 +28,8 @@ import {
   MANAGER_PICKER_PAGE_SIZE,
 } from "../../../constants/pagination";
 import { MANAGER_ROLE_ID } from "../../../constants/roles";
-import { useDebouncedValue } from "../../../hooks/useDebouncedValue";
 import {
-  useCreateEventManagersBatch,
+  useAssignManagersToEvent,
   useGetEventManagersByEventId,
 } from "../../../queries/eventManager.queries";
 import { useEventsQuery } from "../../../queries/events.queries";
@@ -37,13 +37,27 @@ import { useGetUsers } from "../../../queries/users.queries";
 import { getErrorMessage } from "../../../utils/error";
 import { formatDate } from "../../../utils/date";
 import { SearchInput } from "../../../components/ui/SearchInput";
-import { useEventsQuery } from "../../../queries/events.queries";
-import { useGetUsers } from "../../../queries/users.queries";
 
 const STEPS = [
   { title: "Evento", description: "Elige el evento a administrar" },
   { title: "Event managers", description: "Selecciona los managers" },
+  { title: "Resultado", description: "Resumen de la asignación" },
 ];
+const RESULT_STEP = 2;
+
+interface AssignmentSummaryRow {
+  id: number;
+  name: string;
+  email: string;
+  success: boolean;
+  message: string;
+}
+
+interface AssignmentSummary {
+  eventName: string;
+  rows: AssignmentSummaryRow[];
+  fatalMessage?: string;
+}
 
 interface AssignManagersDialogProps {
   open: boolean;
@@ -56,15 +70,16 @@ export function AssignManagersDialog({
 }: AssignManagersDialogProps) {
   const [step, setStep] = useState(0);
   const [eventSearch, setEventSearch] = useState("");
-  const debouncedEventSearch = useDebouncedValue(eventSearch.trim());
-  const [eventPageIndex, setEventPageIndex] = useState(0);
+  const [eventPageIndex, setEventPageIndex] = useState(1);
   const [selectedEvent, setSelectedEvent] = useState<SimpleEventDto | null>(
     null,
   );
   const [userSearch, setUserSearch] = useState("");
-  const debouncedUserSearch = useDebouncedValue(userSearch.trim());
-  const [userPageIndex, setUserPageIndex] = useState(0);
+  const [userPageIndex, setUserPageIndex] = useState(1);
   const [selectedManagers, setSelectedManagers] = useState<UserDto[]>([]);
+  const [summary, setSummary] = useState<AssignmentSummary | null>(null);
+  // SearchInput keeps its own text, so it is remounted when the dialog resets.
+  const [searchSession, setSearchSession] = useState(0);
 
   const isManagerStep = open && step === 1 && selectedEvent !== null;
 
@@ -72,7 +87,7 @@ export function AssignManagersDialog({
     {
       page: eventPageIndex,
       size: EVENT_PICKER_PAGE_SIZE,
-      name: debouncedEventSearch || undefined,
+      name: eventSearch || undefined,
     },
     open,
   );
@@ -84,7 +99,7 @@ export function AssignManagersDialog({
       roleId: MANAGER_ROLE_ID,
       page: userPageIndex,
       size: MANAGER_PICKER_PAGE_SIZE,
-      name: debouncedUserSearch || undefined,
+      name: userSearch || undefined,
     },
     isManagerStep,
   );
@@ -102,8 +117,8 @@ export function AssignManagersDialog({
     ),
   );
 
-  const batchMutation = useCreateEventManagersBatch();
-  const isAssigning = batchMutation.isPending;
+  const assignMutation = useAssignManagersToEvent();
+  const isAssigning = assignMutation.isPending;
 
   const eventsErrorMessage = eventsQuery.isError
     ? getErrorMessage(
@@ -119,13 +134,15 @@ export function AssignManagersDialog({
     : undefined;
 
   const resetState = () => {
+    setSearchSession((current) => current + 1);
     setStep(0);
     setEventSearch("");
-    setEventPageIndex(0);
+    setEventPageIndex(1);
     setSelectedEvent(null);
     setUserSearch("");
-    setUserPageIndex(0);
+    setUserPageIndex(1);
     setSelectedManagers([]);
+    setSummary(null);
   };
 
   const handleOpenChange = (details: { open: boolean }) => {
@@ -141,7 +158,14 @@ export function AssignManagersDialog({
   };
 
   const handleStepChange = (details: { step: number }) => {
-    if (details.step === step || isAssigning) {
+    // The result step is only reachable by assigning; leaving it or jumping
+    // to it from the steps header would show an empty or stale summary.
+    if (
+      details.step === step ||
+      details.step === RESULT_STEP ||
+      step === RESULT_STEP ||
+      isAssigning
+    ) {
       return;
     }
 
@@ -171,12 +195,12 @@ export function AssignManagersDialog({
 
   const handleEventSearchChange = (value: string) => {
     setEventSearch(value);
-    setEventPageIndex(0);
+    setEventPageIndex(1);
   };
 
   const handleUserSearchChange = (value: string) => {
     setUserSearch(value);
-    setUserPageIndex(0);
+    setUserPageIndex(1);
   };
 
   const toggleEvent = (event: SimpleEventDto) => {
@@ -215,85 +239,41 @@ export function AssignManagersDialog({
       return;
     }
 
-    const managersById = new Map(
-      managersToAssign.map((manager) => [manager.id, manager]),
-    );
-
     try {
-      const results = await batchMutation.mutateAsync(
-        managersToAssign.map((manager) => ({
-          managerId: manager.id,
-          eventId: event.id,
-        })),
+      const results = await assignMutation.mutateAsync({
+        eventId: event.id,
+        managerIds: managersToAssign.map((manager) => manager.id),
+      });
+      const resultByManager = new Map(
+        results.map((result) => [result.managerId, result]),
       );
 
-      const succeeded: UserDto[] = [];
-      const failed: { manager: UserDto; message: string }[] = [];
+      setSummary({
+        eventName: event.name,
+        rows: managersToAssign.map((manager) => {
+          const result = resultByManager.get(manager.id);
 
-      results.forEach(({ request, response, error }) => {
-        const manager = managersById.get(request.managerId);
-
-        if (!manager) {
-          return;
-        }
-
-        if (response?.success) {
-          succeeded.push(manager);
-          return;
-        }
-
-        failed.push({
-          manager,
-          message: error
-            ? getErrorMessage(error, "No se pudo asignar el manager.")
-            : response?.message ?? "No se pudo asignar el manager.",
-        });
-      });
-
-      handleOpenChange({ open: false });
-
-      const descriptionParts = [
-        `${succeeded.length} de ${managersToAssign.length} managers asignados a ${event.name}.`,
-      ];
-
-      if (failed.length > 0) {
-        const failedDetails = failed
-          .slice(0, 3)
-          .map(({ manager, message }) => `${manager.name}: ${message}`)
-          .join("; ");
-        const remainingFailures = failed.length - 3;
-        descriptionParts.push(
-          `No se pudieron asignar: ${failedDetails}${remainingFailures > 0 ? `; y ${remainingFailures} más` : ""
-          }.`,
-        );
-      }
-
-      toaster.create({
-        title:
-          failed.length === 0
-            ? "Asignación completada"
-            : succeeded.length > 0
-              ? "Asignación parcial"
-              : "No se pudo completar la asignación",
-        description: descriptionParts.join(" "),
-        type:
-          failed.length === 0
-            ? "success"
-            : succeeded.length > 0
-              ? "warning"
-              : "error",
+          return {
+            id: manager.id,
+            name: manager.name,
+            email: manager.email,
+            success: result?.success ?? false,
+            message: result?.message ?? "Sin resultado del servidor.",
+          };
+        }),
       });
     } catch (error) {
-      handleOpenChange({ open: false });
-      toaster.create({
-        title: "No se pudo completar la asignación",
-        description: getErrorMessage(
+      setSummary({
+        eventName: event.name,
+        rows: [],
+        fatalMessage: getErrorMessage(
           error,
           "No se pudo completar la asignación.",
         ),
-        type: "error",
       });
     }
+
+    setStep(RESULT_STEP);
   };
 
   const eventColumns: DataTableColumn<SimpleEventDto>[] = [
@@ -384,6 +364,45 @@ export function AssignManagersDialog({
     },
   ];
 
+  const summaryColumns: DataTableColumn<AssignmentSummaryRow>[] = [
+    {
+      key: "manager",
+      header: "Manager",
+      render: (row) => (
+        <Stack gap="0">
+          <Text fontWeight="medium">{row.name}</Text>
+          <Text color="fg.muted" fontSize="xs">
+            {row.email}
+          </Text>
+        </Stack>
+      ),
+    },
+    {
+      key: "status",
+      header: "Estado",
+      render: (row) => (
+        <Badge
+          colorPalette={row.success ? "green" : "red"}
+          variant="subtle"
+        >
+          {row.success ? "Asignado" : "No asignado"}
+        </Badge>
+      ),
+    },
+    {
+      key: "message",
+      header: "Mensaje",
+      render: (row) => (
+        <Text color="fg.muted" fontSize="sm">
+          {row.message}
+        </Text>
+      ),
+    },
+  ];
+
+  const summarySucceeded =
+    summary?.rows.filter((row) => row.success).length ?? 0;
+
   return (
     <Dialog.Root
       onOpenChange={handleOpenChange}
@@ -444,6 +463,7 @@ export function AssignManagersDialog({
                       <Field.Root>
                         <Field.Label>Buscar evento</Field.Label>
                         <SearchInput
+                          key={searchSession}
                           onSearchChange={handleEventSearchChange}
                           placeholder="Buscar por nombre"
                         />
@@ -478,6 +498,7 @@ export function AssignManagersDialog({
                           isFetching={eventsQuery.isFetching}
                           itemLabel="eventos"
                           onPageChange={setEventPageIndex}
+                          page={eventPageIndex}
                           pagination={eventsPagination}
                         />
                       </Box>
@@ -490,6 +511,7 @@ export function AssignManagersDialog({
                       <Field.Root>
                         <Field.Label>Buscar manager</Field.Label>
                         <SearchInput
+                          key={searchSession}
                           onSearchChange={handleUserSearchChange}
                           placeholder="Buscar manager por nombre"
                         />
@@ -528,6 +550,7 @@ export function AssignManagersDialog({
                           isFetching={dialogUsersQuery.isFetching}
                           itemLabel="managers"
                           onPageChange={setUserPageIndex}
+                          page={userPageIndex}
                           pagination={usersPagination}
                         />
                       </Box>
@@ -557,56 +580,106 @@ export function AssignManagersDialog({
                       </Flex>
                     </Stack>
                   </Steps.Content>
+
+                  <Steps.Content index={RESULT_STEP}>
+                    {summary && summary.fatalMessage && (
+                      <Box
+                        bg="bg.panel"
+                        borderColor="border"
+                        borderRadius="xl"
+                        borderWidth="1px"
+                        p="6"
+                        textAlign="center"
+                      >
+                        <Text color="fg.error">{summary.fatalMessage}</Text>
+                      </Box>
+                    )}
+
+                    {summary && !summary.fatalMessage && (
+                      <Stack gap="4">
+                        <Text color="fg.muted" fontSize="sm">
+                          {summarySucceeded} de {summary.rows.length} managers
+                          asignados a {summary.eventName}.
+                        </Text>
+
+                        <Box
+                          bg="bg.panel"
+                          borderColor="border"
+                          borderRadius="xl"
+                          borderWidth="1px"
+                          overflow="hidden"
+                        >
+                          <DataTable
+                            bordered={false}
+                            columns={summaryColumns}
+                            maxHeight="sm"
+                            rows={summary.rows}
+                            size="sm"
+                          />
+                        </Box>
+                      </Stack>
+                    )}
+                  </Steps.Content>
                 </Steps.Root>
               </Stack>
             </Dialog.Body>
 
             <Dialog.Footer>
-              <Flex align="center" gap="2" justify="space-between" w="100%">
-                <Flex gap="2">
-                  {step > 0 && (
-                    <Button
-                      disabled={isAssigning}
-                      onClick={handleBack}
-                      variant="outline"
-                    >
-                      <ArrowLeft /> Anterior
-                    </Button>
-                  )}
+              {step === RESULT_STEP ? (
+                <Flex justify="flex-end" w="100%">
                   <Button
-                    disabled={isAssigning}
+                    colorPalette="brand"
                     onClick={() => handleOpenChange({ open: false })}
-                    variant="outline"
                   >
-                    Cancelar
+                    Cerrar
                   </Button>
                 </Flex>
+              ) : (
+                <Flex align="center" gap="2" justify="space-between" w="100%">
+                  <Flex gap="2">
+                    {step > 0 && (
+                      <Button
+                        disabled={isAssigning}
+                        onClick={handleBack}
+                        variant="outline"
+                      >
+                        <ArrowLeft /> Anterior
+                      </Button>
+                    )}
+                    <Button
+                      disabled={isAssigning}
+                      onClick={() => handleOpenChange({ open: false })}
+                      variant="outline"
+                    >
+                      Cancelar
+                    </Button>
+                  </Flex>
 
-                {step === 0 ? (
-                  <Button
-                    colorPalette="brand"
-                    disabled={!selectedEvent || isAssigning}
-                    onClick={handleNext}
-                  >
-                    Siguiente <ArrowRight />
-                  </Button>
-                ) : (
-                  <Button
-                    colorPalette="brand"
-                    disabled={
-                      !selectedEvent ||
-                      selectedManagers.length === 0 ||
-                      isAssigning
-                    }
-                    loading={isAssigning}
-                    onClick={() => void handleAssignSelected()}
-                  >
-                    <UserPlus /> Asignar {selectedManagers.length}{" "}
-                    {selectedManagers.length === 1 ? "manager" : "managers"} y
-                    cerrar
-                  </Button>
-                )}
-              </Flex>
+                  {step === 0 ? (
+                    <Button
+                      colorPalette="brand"
+                      disabled={!selectedEvent || isAssigning}
+                      onClick={handleNext}
+                    >
+                      Siguiente <ArrowRight />
+                    </Button>
+                  ) : (
+                    <Button
+                      colorPalette="brand"
+                      disabled={
+                        !selectedEvent ||
+                        selectedManagers.length === 0 ||
+                        isAssigning
+                      }
+                      loading={isAssigning}
+                      onClick={() => void handleAssignSelected()}
+                    >
+                      <UserPlus /> Asignar {selectedManagers.length}{" "}
+                      {selectedManagers.length === 1 ? "manager" : "managers"}
+                    </Button>
+                  )}
+                </Flex>
+              )}
             </Dialog.Footer>
 
             <Dialog.CloseTrigger disabled={isAssigning} />

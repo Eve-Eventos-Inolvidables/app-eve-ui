@@ -51,7 +51,7 @@ async function getEventCategoriesPage(params: GetEventCategoriesRequest) {
 
 async function getAllEventCategories(): Promise<EventCategoryDto[]> {
   const firstPage = await getEventCategoriesPage({
-    page: 0,
+    page: 1,
     size: CATEGORY_PAGE_SIZE,
     sort: "name,asc",
   });
@@ -61,9 +61,10 @@ async function getAllEventCategories(): Promise<EventCategoryDto[]> {
   const remainingPages =
     pageCount > 1
       ? await Promise.all(
+          // Pages 2..pageCount: index 0 maps to page 2.
           Array.from({ length: pageCount - 1 }, (_, index) =>
             getEventCategoriesPage({
-              page: index + 1,
+              page: index + 2,
               size: pageSize,
               sort: "name,asc",
             }),

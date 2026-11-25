@@ -21,7 +21,8 @@ import type {
   BatchDto,
   CreateEventRequest,
   SectorByBatchDto,
-  SectorDto
+  SectorDto,
+  SimpleEventDto
  
 } from "../types/event.types";
 import type { GetEventsRequest, PagedRequest } from "../types/request";
@@ -78,8 +79,8 @@ export function useAllEventsQuery(enabled = true) {
   });
 }
 
-export function useEventByIdQuery(id: number, enabled = true) {
-  return useQuery({
+export function eventByIdQueryOptions(id: number) {
+  return {
     queryKey: eventKeys.detail(id),
     queryFn: async () => {
       const response = await getEventById(id);
@@ -90,9 +91,16 @@ export function useEventByIdQuery(id: number, enabled = true) {
 
       return response.data;
     },
-    enabled: enabled && Number.isInteger(id) && id > 0,
+  };
+}
+
+export function useEventByIdQuery(id: number, enabled = true) {
+  return useQuery({
+    ...eventByIdQueryOptions(id),
+    enabled: enabled && Number.isSafeInteger(id) && id > 0,
   });
 }
+
 
 async function getEventCatalogStructure(
   eventId: number,

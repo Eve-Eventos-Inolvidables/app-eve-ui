@@ -512,9 +512,6 @@ export default function EventDetails() {
             >
               {isPastEvent ? "Evento finalizado" : "Evento"}
             </Badge>
-            <Text color="fg.muted" fontSize="sm">
-              #{event.id}
-            </Text>
           </Flex>
 
           <Box>
@@ -988,7 +985,7 @@ export default function EventDetails() {
                 Tus entradas están listas
               </Heading>
               <Text color="fg.muted" fontSize="sm" mt="1">
-                Compra #{completedBuy.id} · Total registrado:{" "}
+                Total registrado:{" "}
                 {formatPrice(completedBuy.total)}
               </Text>
               <Text color="fg.muted" fontSize="xs" mt="2">

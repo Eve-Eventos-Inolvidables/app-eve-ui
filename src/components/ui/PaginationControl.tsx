@@ -11,7 +11,6 @@ import type { Pagination as PaginationType } from "../../types/responses";
 
 interface PaginationControlProps {
   pagination?: PaginationType | null;
-  /** Página actual (1-based). Si se envía, el componente queda controlado por el padre. */
   page?: number;
   onPageChange?: (page: number) => void;
   isFetching?: boolean;

@@ -14,15 +14,23 @@ import { RouteFallback } from "../components/ui/RouteFallback";
 import { ColorModeButton } from "../components/ui/ColorModeButton";
 import { toaster } from "../components/ui/chakra-base/toaster-instance";
 import { useAuthStore } from "../stores/auth.store";
-import { CalendarDays, LogOut, Plus, Tags, Ticket, Users } from "lucide-react";
-import { getLandingPath } from "../utils/roleNavigation";
+import {
+  CalendarCheck,
+  CalendarDays,
+  LogOut,
+  Plus,
+  Tags,
+  Ticket,
+  Users,
+} from "lucide-react";
 
-import { useIsAdmin } from "../utils/permissions";
+import { useIsAdmin, useIsManager } from "../utils/permissions";
 export function AppLayout() {
   const user = useAuthStore((state) => state.user);
   const clearAuth = useAuthStore((state) => state.clearAuth);
   const navigate = useNavigate();
   const isAdmin = useIsAdmin();
+  const isManager = useIsManager();
 
   const handleLogout = () => {
     clearAuth();
@@ -73,7 +81,7 @@ export function AppLayout() {
               <Ticket  color="white"/>
             </Box>
               <Button
-                onClick={() => navigate(getLandingPath(user?.roleName))}
+                onClick={() => navigate("/dash")}
                 size="sm"
                 variant="ghost"
               >
@@ -93,6 +101,16 @@ export function AppLayout() {
           >
             <CalendarDays /> Eventos
           </Button>
+
+          {isManager && (
+            <Button
+              onClick={() => navigate("/manager")}
+              size="sm"
+              variant="ghost"
+            >
+              <CalendarCheck /> Mis eventos
+            </Button>
+          )}
 
           {isAdmin && (
             <>

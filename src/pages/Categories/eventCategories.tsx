@@ -13,6 +13,7 @@ import { useState } from "react";
 import { CreateCategoryDialog } from "../../components/categories/CreateCategoryDialog";
 import { DeleteCategoryDialog } from "../../components/categories/DeleteCategoryDialog";
 import { EditCategoryDialog } from "../../components/categories/EditCategoryDialog";
+import { PaginationControl } from "../../components/ui/PaginationControl";
 import { useAllEventCategoriesQuery, useEventCategoriesQuery } from "../../queries/eventCategory.queries";
 import type { EventCategoryDto } from "../../types/event.types";
 import { getErrorMessage } from "../../utils/error";
@@ -20,7 +21,7 @@ import { getErrorMessage } from "../../utils/error";
 const PAGE_SIZE = 10;
 
 export default function EventCategories() {
-  const [pageIndex, setPageIndex] = useState(0);
+  const [page, setPage] = useState(1);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [categoryToEdit, setCategoryToEdit] =
     useState<EventCategoryDto | null>(null);
@@ -28,20 +29,18 @@ export default function EventCategories() {
     useState<EventCategoryDto | null>(null);
 
   const categoriesQuery = useEventCategoriesQuery({
-    page: pageIndex,
+    page,
     size: PAGE_SIZE,
     sort: "name,asc",
   });
   const allCategoriesQuery = useAllEventCategoriesQuery();
   const categories = categoriesQuery.data?.data ?? [];
   const pagination = categoriesQuery.data?.pagination;
-  const totalPages = pagination?.totalPages ?? 0;
-  const currentPage = totalPages > 0 ? Math.min(pageIndex + 1, totalPages) : 1;
   const allActiveCategories = allCategoriesQuery.data ?? [];
 
   const handleDeleted = () => {
-    if (categories.length === 1 && pageIndex > 0) {
-      setPageIndex((current) => Math.max(current - 1, 0));
+    if (categories.length === 1 && page > 1) {
+      setPage((current) => Math.max(current - 1, 1));
     }
     setCategoryToDelete(null);
   };
@@ -174,42 +173,13 @@ export default function EventCategories() {
         {!categoriesQuery.isPending &&
           !categoriesQuery.isError &&
           categories.length > 0 && (
-            <Flex
-              align="center"
-              borderTopColor="border"
-              borderTopWidth="1px"
-              gap="3"
-              justify="space-between"
-              px="4"
-              py="3"
-            >
-              <Text color="fg.muted" fontSize="sm">
-                Página {currentPage} de {Math.max(totalPages, 1)} ·{" "}
-                {pagination?.totalItems ?? categories.length} categorías
-              </Text>
-              <Flex gap="2">
-                <Button
-                  disabled={pageIndex <= 0 || categoriesQuery.isFetching}
-                  onClick={() =>
-                    setPageIndex((current) => Math.max(current - 1, 0))
-                  }
-                  size="sm"
-                  variant="outline"
-                >
-                  Anterior
-                </Button>
-                <Button
-                  disabled={
-                    categoriesQuery.isFetching || currentPage >= totalPages
-                  }
-                  onClick={() => setPageIndex((current) => current + 1)}
-                  size="sm"
-                  variant="outline"
-                >
-                  Siguiente
-                </Button>
-              </Flex>
-            </Flex>
+            <PaginationControl
+              isFetching={categoriesQuery.isFetching}
+              itemLabel="categorías"
+              onPageChange={setPage}
+              page={page}
+              pagination={pagination}
+            />
           )}
       </Box>
 

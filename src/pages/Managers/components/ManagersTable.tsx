@@ -15,8 +15,9 @@ interface ManagersTableProps {
   errorMessage?: string;
   onRetry: () => void;
   pagination?: Pagination | null;
-  pageIndex: number;
-  onPageChange: (pageIndex: number) => void;
+  /** Página actual, 1-based. */
+  page: number;
+  onPageChange: (page: number) => void;
   onViewDetails: (manager: UserDto) => void;
 }
 
@@ -27,6 +28,7 @@ export function ManagersTable({
   errorMessage,
   onRetry,
   pagination,
+  page,
   onPageChange,
   onViewDetails,
 }: ManagersTableProps) {
@@ -82,6 +84,7 @@ export function ManagersTable({
         isFetching={isFetching}
         itemLabel="managers"
         onPageChange={onPageChange}
+        page={page}
         pagination={pagination}
       />
     </Box>

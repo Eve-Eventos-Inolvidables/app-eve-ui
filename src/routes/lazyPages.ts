@@ -1,6 +1,9 @@
 import { lazy } from "react";
 
 export const Dashboard = lazy(() => import("../pages/dashboard"));
+export const ManagerDashboard = lazy(
+  () => import("../pages/Dashboard/ManagerDashboard"),
+);
 export const EventsCatalog = lazy(() => import("../pages/Events/eventCatalog"));
 export const EventDetails = lazy(() => import("../pages/Events/eventDetails"));
 export const Login = lazy(() => import("../pages/login"));
