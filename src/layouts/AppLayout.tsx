@@ -26,6 +26,7 @@ import {
   Users,
 } from "lucide-react";
 
+import { UiNodeBadge } from "../components/ui/UiNodeBadge";
 import { useIsAdmin, useIsManager } from "../utils/permissions";
 export function AppLayout() {
   const user = useAuthStore((state) => state.user);
@@ -91,7 +92,8 @@ export function AppLayout() {
               EVE
             </Heading>
               </Button>
-            
+
+            <UiNodeBadge />
           </Flex>
 
           <Box flex="1" />
