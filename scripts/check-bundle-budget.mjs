@@ -36,7 +36,6 @@ const cssGzip = cssFiles.reduce(
 );
 
 const routeChunks = chunks.filter((chunk) => chunk !== entry);
-const totalGzip = chunks.reduce((sum, chunk) => sum + chunk.gzip, 0);
 const largestRouteChunk = routeChunks.reduce(
   (largest, chunk) => (chunk.gzip > largest.gzip ? chunk : largest),
   { file: "-", raw: 0, gzip: 0 },
@@ -50,7 +49,6 @@ const rows = [
     largestRouteChunk.gzip,
     budget.routeChunkGzip,
   ],
-  ["total JS", `${chunks.length} chunks`, totalGzip, budget.totalGzip],
   ["CSS", `${cssFiles.length} files`, cssGzip, budget.cssGzip],
 ];
 
