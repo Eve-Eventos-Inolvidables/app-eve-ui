@@ -21,3 +21,8 @@ export interface GetEventsRequest extends PagedRequestByName {
 }
 
 export type GetEventCategoriesRequest = PagedSortedRequest;
+
+export interface GetUserInterestsRequest extends PagedRequest {
+  userId?: number;
+  categoryId?: number;
+}

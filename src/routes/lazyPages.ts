@@ -1,6 +1,7 @@
 import { lazy } from "react";
 
 export const Dashboard = lazy(() => import("../pages/dashboard"));
+export const Profile = lazy(() => import("../pages/profile"));
 export const ManagerDashboard = lazy(
   () => import("../pages/Dashboard/ManagerDashboard"),
 );
@@ -8,6 +9,9 @@ export const EventsCatalog = lazy(() => import("../pages/Events/eventCatalog"));
 export const EventDetails = lazy(() => import("../pages/Events/eventDetails"));
 export const Login = lazy(() => import("../pages/login"));
 export const Register = lazy(() => import("../pages/register"));
+export const SelectInterests = lazy(
+  () => import("../pages/onboarding/selectInterests"),
+);
 export const EventCreate = lazy(() => import("../pages/Events/eventCreate"));
 export const EventManagers = lazy(
   () => import("../pages/Managers/eventManagers"),

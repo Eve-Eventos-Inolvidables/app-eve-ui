@@ -5,6 +5,7 @@ import {
   Container,
   Flex,
   Heading,
+  IconButton,
   Text,
 } from "@chakra-ui/react";
 import { Outlet, useNavigate } from "react-router-dom";
@@ -21,6 +22,7 @@ import {
   Plus,
   Tags,
   Ticket,
+  UserRound,
   Users,
 } from "lucide-react";
 
@@ -147,7 +149,16 @@ export function AppLayout() {
 
           <ColorModeButton />
 
-          <Flex align="center" display={{ base: "none", md: "flex" }} gap="2">
+          <Button
+            alignItems="center"
+            display={{ base: "none", md: "flex" }}
+            gap="2"
+            h="auto"
+            onClick={() => navigate("/profile")}
+            px="2"
+            py="1"
+            variant="ghost"
+          >
             <Avatar.Root bg="brand.solid" color="brand.contrast" size="sm">
               <Avatar.Fallback name={user?.name} />
             </Avatar.Root>
@@ -159,7 +170,17 @@ export function AppLayout() {
                 {user?.email ?? "Sin correo"}
               </Text>
             </Box>
-          </Flex>
+          </Button>
+
+          <IconButton
+            aria-label="Ir a mi perfil"
+            display={{ base: "inline-flex", md: "none" }}
+            onClick={() => navigate("/profile")}
+            size="sm"
+            variant="ghost"
+          >
+            <UserRound />
+          </IconButton>
 
           <Button
             colorPalette="brand"
