@@ -3,8 +3,8 @@ import { useState } from "react";
 import { getUiNode } from "../../utils/uiNode";
 
 const NODE_PALETTE: Record<string, string> = {
-  "UI-0": "blue",
-  "UI-1": "purple",
+  Tom1: "blue",
+  Tom2: "purple",
 };
 
 export function UiNodeBadge() {
@@ -15,7 +15,7 @@ export function UiNodeBadge() {
       colorPalette={NODE_PALETTE[node] ?? "gray"}
       flexShrink={0}
       fontFamily="mono"
-      title={`Interfaz actual: ${node}`}
+      title={`Servidor actual: ${node}`}
       variant="subtle"
     >
       {node}
